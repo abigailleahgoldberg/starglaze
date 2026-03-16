@@ -72,7 +72,7 @@ function renderHome() {
   content.innerHTML = `
     <div class="page-home">
       <div class="hero-banner">
-        <img src="../assets/banner.png" alt="Star Glaze">
+        <img src="./banner.png" alt="Star Glaze">
         <div class="hero-overlay"></div>
         <div class="hero-content">
           <h1 class="hero-title"><span class="star">Star </span><span class="glaze">Glaze</span></h1>
@@ -169,7 +169,7 @@ function renderPlay() {
 
   content.innerHTML = `
     <div class="page-play">
-      <img src="../assets/logo.png" class="play-logo" alt="Star Glaze">
+      <img src="./logo.png" class="play-logo" alt="Star Glaze">
       <h1 class="play-title"><span class="star">Star </span><span class="glaze">Glaze</span></h1>
       <p class="play-subtitle">Select your Fortnite build folder and launch</p>
 
@@ -221,10 +221,10 @@ function renderPlay() {
 
 function renderNews() {
   const newsItems = [
-    { tag: "UPDATE", title: "Star Glaze v1.0 Released", desc: "The first official release of Star Glaze is here. One-click launching, mod management, and a full cosmetics browser.", date: "March 16, 2026", img: "../assets/banner.png" },
-    { tag: "ANNOUNCEMENT", title: "Server Infrastructure Upgrade", desc: "We've upgraded our backend servers for better performance and lower latency across all regions.", date: "March 15, 2026", img: "../assets/banner.png" },
-    { tag: "FEATURE", title: "Cosmetics Browser Now Live", desc: "Browse over 3,000 cosmetics from every Fortnite season. Preview skins, pickaxes, gliders, and more.", date: "March 14, 2026", img: "../assets/banner.png" },
-    { tag: "COMMUNITY", title: "Discord Server Open", desc: "Join our Discord to connect with other OG Fortnite players, share mods, and get support.", date: "March 13, 2026", img: "../assets/banner.png" },
+    { tag: "UPDATE", title: "Star Glaze v1.0 Released", desc: "The first official release of Star Glaze is here. One-click launching, mod management, and a full cosmetics browser.", date: "March 16, 2026", img: "./banner.png" },
+    { tag: "ANNOUNCEMENT", title: "Server Infrastructure Upgrade", desc: "We've upgraded our backend servers for better performance and lower latency across all regions.", date: "March 15, 2026", img: "./banner.png" },
+    { tag: "FEATURE", title: "Cosmetics Browser Now Live", desc: "Browse over 3,000 cosmetics from every Fortnite season. Preview skins, pickaxes, gliders, and more.", date: "March 14, 2026", img: "./banner.png" },
+    { tag: "COMMUNITY", title: "Discord Server Open", desc: "Join our Discord to connect with other OG Fortnite players, share mods, and get support.", date: "March 13, 2026", img: "./banner.png" },
   ];
 
   content.innerHTML = `

@@ -292,12 +292,12 @@ function renderLogin() {
 
       <div class="login-divider"><span>or</span></div>
 
-      <button class="login-register-btn" id="btn-register">
+      <button class="login-register-btn" id="btn-register" style="display:none">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
         Register on Website
       </button>
 
-      <p class="login-hint">Register via Discord on the website, then login here with your email and password.</p>
+      <p class="login-hint">Login with your account credentials.</p>
     </div>
   `;
 
@@ -1060,8 +1060,8 @@ function renderSettings() {
           <span class="setting-value" style="font-family:monospace;font-size:11px">${escapeHtml(config.accountId || "—")}</span>
         </div>
         <div class="setting-row">
-          <span class="setting-label">Register on Website</span>
-          <button class="btn-browse" id="btn-open-register">Open in Browser</button>
+          <span class="setting-label">Register on Website</span> <!-- OAuth disabled -->
+          <button class="btn-browse" id="btn-open-register" style="display:none">Open in Browser</button>
         </div>
         <div class="setting-row">
           <span class="setting-label">Sign Out</span>

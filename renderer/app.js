@@ -14,6 +14,7 @@ let config = {
 };
 
 const CLIENT_CREDENTIALS = "ec684b8c687f479fadea3cb2ad83f5c6:e1f31c211f28413186262d37a13fc84d";
+const DISCORD_CLIENT_ID = "1383979067250053200";
 const CLIENT_CREDENTIALS_B64 = btoa(CLIENT_CREDENTIALS);
 
 // ===== API Helper =====
@@ -323,7 +324,7 @@ function renderLogin() {
   });
 
   document.getElementById("btn-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/register");
+    openExternal(API.baseUrl + "/login");
   });
 }
 
@@ -1104,7 +1105,7 @@ function renderSettings() {
   });
 
   document.getElementById("btn-open-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/register");
+    openExternal(API.baseUrl + "/login");
   });
 
   document.getElementById("btn-logout")?.addEventListener("click", () => {

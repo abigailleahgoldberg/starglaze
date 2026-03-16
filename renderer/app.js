@@ -275,9 +275,10 @@ function renderLogin() {
     <div class="page-login">
       <img src="./logo.png" class="login-logo" alt="Star Glaze">
       <h1 class="login-title"><span class="star">Star </span><span class="glaze">Glaze</span></h1>
-      <p class="login-subtitle">Sign in to your account</p>
+      <p class="login-subtitle">Sign in with Discord to continue</p>
 
-      <form class="login-form" id="login-form">
+      <!-- Email/password login (disabled — OAuth enabled) -->
+      <form class="login-form" id="login-form" style="display:none">
         <div class="login-field">
           <label>Email</label>
           <input type="email" id="login-email" placeholder="your@email.com" required autocomplete="email">
@@ -290,14 +291,12 @@ function renderLogin() {
         <button type="submit" class="login-btn" id="login-btn">LOGIN</button>
       </form>
 
-      <div class="login-divider"><span>or</span></div>
-
-      <button class="login-register-btn" id="btn-register" style="display:none">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
-        Register on Website
+      <button class="login-register-btn" id="btn-register" style="display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:360px;padding:14px 28px;background:#5865F2;color:white;border:none;border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(88,101,242,0.3);">
+        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="white"><path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53.05s5-12.68 11.43-12.68S53.89 46 53.88 53.05 48.84 65.69 42.45 65.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53.05s5-12.68 11.44-12.68S96.23 46 96.12 53.05 91.08 65.69 84.69 65.69Z"/></svg>
+        Login with Discord
       </button>
 
-      <p class="login-hint">Login with your account credentials.</p>
+      <p class="login-hint">Sign in through Discord to create or access your account.</p>
     </div>
   `;
 
@@ -324,7 +323,7 @@ function renderLogin() {
   });
 
   document.getElementById("btn-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/login");
+    openExternal(API.baseUrl + "/login"); // Redirects to Discord OAuth
   });
 }
 
@@ -1061,7 +1060,7 @@ function renderSettings() {
         </div>
         <div class="setting-row">
           <span class="setting-label">Register on Website</span> <!-- OAuth disabled -->
-          <button class="btn-browse" id="btn-open-register" style="display:none">Open in Browser</button>
+          <button class="btn-browse" id="btn-open-register">Open in Browser</button>
         </div>
         <div class="setting-row">
           <span class="setting-label">Sign Out</span>

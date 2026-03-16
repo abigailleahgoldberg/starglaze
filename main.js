@@ -1,16 +1,29 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { spawn } = require("child_process");
 
 let mainWindow;
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "starglaze-config.json");
 
+const DEFAULT_CONFIG = {
+  gamePath: "",
+  lastPlayed: null,
+  backendUrl: "http://26.252.123.243:3551",
+  accessToken: null,
+  refreshToken: null,
+  accountId: null,
+  displayName: null,
+  settings: {},
+};
+
 function loadConfig() {
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+    const saved = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+    return { ...DEFAULT_CONFIG, ...saved };
   } catch {
-    return { gamePath: "", lastPlayed: null, settings: {} };
+    return { ...DEFAULT_CONFIG };
   }
 }
 
@@ -55,7 +68,13 @@ ipcMain.handle("select-game-path", async () => {
 });
 
 ipcMain.handle("get-config", () => loadConfig());
-ipcMain.handle("save-config", (_, config) => saveConfig(config));
+
+ipcMain.handle("save-config", (_, config) => {
+  const current = loadConfig();
+  const merged = { ...current, ...config };
+  saveConfig(merged);
+  return merged;
+});
 
 ipcMain.handle("minimize-window", () => mainWindow.minimize());
 ipcMain.handle("maximize-window", () => {
@@ -64,14 +83,42 @@ ipcMain.handle("maximize-window", () => {
 });
 ipcMain.handle("close-window", () => mainWindow.close());
 
-ipcMain.handle("launch-game", async () => {
+ipcMain.handle("open-external", (_, url) => {
+  return shell.openExternal(url);
+});
+
+ipcMain.handle("launch-game", async (_, launchArgs) => {
   const config = loadConfig();
   if (!config.gamePath) return { success: false, error: "No game path set" };
-  const exe = path.join(config.gamePath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
-  if (!fs.existsSync(exe)) return { success: false, error: "Fortnite executable not found" };
-  config.lastPlayed = new Date().toISOString();
-  saveConfig(config);
-  return { success: true };
+
+  const exe = path.join(
+    config.gamePath,
+    "FortniteGame",
+    "Binaries",
+    "Win64",
+    "FortniteClient-Win64-Shipping.exe"
+  );
+
+  if (!fs.existsSync(exe)) {
+    return { success: false, error: "Fortnite executable not found" };
+  }
+
+  const args = launchArgs || [];
+
+  try {
+    const child = spawn(exe, args, {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+
+    config.lastPlayed = new Date().toISOString();
+    saveConfig(config);
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 app.whenReady().then(createWindow);

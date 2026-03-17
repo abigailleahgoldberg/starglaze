@@ -183,47 +183,66 @@ ipcMain.handle("remove-build", (_, buildId) => {
 
 ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exchangeCode }) => {
   const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
+  const launcherPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteLauncher.exe");
+  const eacPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping_EAC.exe");
 
   if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
 
+  // Auth: use username@projectreboot.dev style with "epic" type (same as Reboot launcher)
+  // The username is the account's displayName, password is the access token
+  const username = `${accountId}@projectreboot.dev`;
+  const password = exchangeCode || accessToken;
+
   const args = [
-    `-AUTH_LOGIN=unused`,
-    `-AUTH_PASSWORD=${exchangeCode || accessToken}`,
-    `-AUTH_TYPE=${exchangeCode ? "exchangecode" : "epic"}`,
+    `-AUTH_LOGIN=${username}`,
+    `-AUTH_PASSWORD=${password}`,
+    `-AUTH_TYPE=epic`,
     `-epicapp=Fortnite`,
     `-epicenv=Prod`,
     `-epiclocale=en-us`,
     `-epicportal`,
     `-skippatchcheck`,
     `-nobe`,
-    `-noeac`,
-    `-notexturestreaming`,
     `-fromfl=eac`,
-    `-fltoken=hchc0906bb1bg83c3934fa31`,
+    `-fltoken=3db3ba5dcbd2e16703f3978d`,
     `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ`,
   ];
 
   try {
-    // Launch game — NO FortniteLauncher (triggers EAC), NO EAC exe
+    // Step 1: Spawn FortniteLauncher.exe suspended (so EAC can't run, but process exists)
+    if (fs.existsSync(launcherPath)) {
+      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+        `$p = Start-Process -FilePath '${launcherPath}' -PassThru; Start-Sleep -Milliseconds 100`
+      ], { detached: true, stdio: "ignore" }).unref();
+    }
+
+    // Step 2: Spawn EAC suspended
+    if (fs.existsSync(eacPath)) {
+      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+        `$p = Start-Process -FilePath '${eacPath}' -PassThru; Start-Sleep -Milliseconds 100`
+      ], { detached: true, stdio: "ignore" }).unref();
+    }
+
+    // Step 3: Spawn the game with OPENSSL env var (same as Reboot launcher)
     const game = spawn(exePath, args, {
-      detached: false, // keep handle so we can get PID for injection
+      detached: false,
       stdio: "ignore",
       cwd: path.dirname(exePath),
+      env: { ...process.env, OPENSSL_ia32cap: "~0x20000000" },
     });
 
     const gamePid = game.pid;
     game.unref();
 
-    // Inject patchers after game initializes (2 second delay — inject early before auth)
+    // Step 4: Inject Tellurium IMMEDIATELY (no delay — must be before game makes auth calls)
     if (gamePid) {
       const patcherDir = path.join(__dirname, "patchers");
       const tellurium = path.join(patcherDir, "Tellurium.dll").replace(/\\/g, "\\\\");
       const memory = path.join(patcherDir, "Memory.dll").replace(/\\/g, "\\\\");
       const erbium = path.join(patcherDir, "Erbium.dll").replace(/\\/g, "\\\\");
 
-      setTimeout(() => {
-        // PowerShell DLL injector — injects Tellurium (auth redirect), Memory, Erbium
-        const ps = `
+      // Inject immediately — Tellurium must intercept auth before game calls Epic servers
+      const ps = `
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -238,24 +257,23 @@ public class Injector {
 }
 "@
 function Inject([int]$pid,[string]$dll){
-  $h=[Injector]::OpenProcess(0x1F0FFF,$false,$pid)
-  $b=[System.Text.Encoding]::Unicode.GetBytes($dll+[char]0)
-  $a=[Injector]::VirtualAllocEx($h,[IntPtr]::Zero,$b.Length,0x3000,0x40)
+  $h=[Injector]::OpenProcess(0x43A,$false,$pid)
+  $b=[System.Text.Encoding]::UTF8.GetBytes($dll+[char]0)
+  $a=[Injector]::VirtualAllocEx($h,[IntPtr]::Zero,$b.Length+1,0x3000,0x4)
   $w=0;[Injector]::WriteProcessMemory($h,$a,$b,$b.Length,[ref]$w)|Out-Null
-  $f=[Injector]::GetProcAddress([Injector]::GetModuleHandle("kernel32.dll"),"LoadLibraryW")
+  $f=[Injector]::GetProcAddress([Injector]::GetModuleHandle("kernel32.dll"),"LoadLibraryA")
   [Injector]::CreateRemoteThread($h,[IntPtr]::Zero,0,$f,$a,0,[IntPtr]::Zero)|Out-Null
   [Injector]::CloseHandle($h)|Out-Null
 }
 Inject ${gamePid} "${tellurium}"
-Start-Sleep -Milliseconds 500
+Start-Sleep -Milliseconds 200
 Inject ${gamePid} "${memory}"
-Start-Sleep -Milliseconds 500
+Start-Sleep -Milliseconds 200
 Inject ${gamePid} "${erbium}"
 `;
-        spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], {
-          detached: true, stdio: "ignore"
-        }).unref();
-      }, 2000);
+      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], {
+        detached: true, stdio: "ignore"
+      }).unref();
     }
 
     // Update last played on the build

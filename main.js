@@ -187,9 +187,9 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exc
   if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
 
   const args = [
-    exchangeCode ? "-AUTH_LOGIN=unused" : `-AUTH_LOGIN=${accountId}@starglaze`,
+    `-AUTH_LOGIN=unused`,
     `-AUTH_PASSWORD=${exchangeCode || accessToken}`,
-    `-AUTH_TYPE=epic`,
+    `-AUTH_TYPE=${exchangeCode ? "exchangecode" : "epic"}`,
     `-epicapp=Fortnite`,
     `-epicenv=Prod`,
     `-epiclocale=en-us`,
@@ -197,6 +197,7 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exc
     `-skippatchcheck`,
     `-nobe`,
     `-noeac`,
+    `-notexturestreaming`,
     `-fromfl=eac`,
     `-fltoken=hchc0906bb1bg83c3934fa31`,
     `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ`,
@@ -213,7 +214,7 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exc
     const gamePid = game.pid;
     game.unref();
 
-    // Inject patchers after game initializes (5 second delay)
+    // Inject patchers after game initializes (2 second delay — inject early before auth)
     if (gamePid) {
       const patcherDir = path.join(__dirname, "patchers");
       const tellurium = path.join(patcherDir, "Tellurium.dll").replace(/\\/g, "\\\\");
@@ -254,7 +255,7 @@ Inject ${gamePid} "${erbium}"
         spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], {
           detached: true, stdio: "ignore"
         }).unref();
-      }, 5000);
+      }, 2000);
     }
 
     // Update last played on the build

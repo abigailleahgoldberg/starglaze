@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const crypto = require("crypto");
 
 let mainWindow;
 
@@ -10,11 +11,11 @@ const CONFIG_PATH = path.join(app.getPath("userData"), "starglaze-config.json");
 const DEFAULT_CONFIG = {
   gamePath: "",
   lastPlayed: null,
-  backendUrl: "http://26.252.123.243:3551",
   accessToken: null,
   refreshToken: null,
   accountId: null,
   displayName: null,
+  builds: [],
   settings: {},
 };
 
@@ -32,6 +33,9 @@ function saveConfig(config) {
 }
 
 function createWindow() {
+  // Remove menu bar
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 750,
@@ -50,9 +54,154 @@ function createWindow() {
   });
 
   mainWindow.loadFile("renderer/index.html");
+
+  // Disable devtools in production
+  mainWindow.webContents.on("devtools-opened", () => {
+    mainWindow.webContents.closeDevTools();
+  });
 }
 
-// IPC handlers
+// IPC handlers — Window controls
+ipcMain.handle("minimize-window", () => mainWindow.minimize());
+ipcMain.handle("maximize-window", () => {
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+ipcMain.handle("close-window", () => mainWindow.close());
+
+ipcMain.handle("open-external", (_, url) => {
+  return shell.openExternal(url);
+});
+
+// Config
+ipcMain.handle("get-config", () => loadConfig());
+
+ipcMain.handle("save-config", (_, config) => {
+  const current = loadConfig();
+  const merged = { ...current, ...config };
+  saveConfig(merged);
+  return merged;
+});
+
+// ===== BUILD MANAGEMENT =====
+
+ipcMain.handle("import-build", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
+    title: "Select Fortnite Build Folder",
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+
+  const buildPath = result.filePaths[0];
+  const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
+
+  if (!fs.existsSync(exePath)) {
+    return { error: "FortniteClient-Win64-Shipping.exe not found in this folder. Make sure you selected the root Fortnite build folder." };
+  }
+
+  // Try to detect version from .manifest files or folder name
+  let detectedVersion = null;
+  try {
+    const manifestDir = path.join(buildPath, "FortniteGame", "Binaries", "Win64");
+    const files = fs.readdirSync(manifestDir);
+    for (const f of files) {
+      if (f.endsWith(".manifest")) {
+        const content = fs.readFileSync(path.join(manifestDir, f), "utf8");
+        const match = content.match(/(\d+\.\d+)/);
+        if (match) { detectedVersion = match[1]; break; }
+      }
+    }
+  } catch {}
+
+  // Fallback: try to detect from folder name
+  if (!detectedVersion) {
+    const folderMatch = buildPath.match(/(\d+\.\d+)/);
+    if (folderMatch) detectedVersion = folderMatch[1];
+  }
+
+  const buildId = crypto.randomUUID();
+
+  return {
+    id: buildId,
+    path: buildPath,
+    exePath,
+    version: detectedVersion,
+  };
+});
+
+ipcMain.handle("get-builds", () => {
+  const config = loadConfig();
+  return config.builds || [];
+});
+
+ipcMain.handle("remove-build", (_, buildId) => {
+  const config = loadConfig();
+  config.builds = (config.builds || []).filter((b) => b.id !== buildId);
+  saveConfig(config);
+  return config.builds;
+});
+
+// ===== LAUNCH GAME =====
+
+ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId }) => {
+  const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
+  const launcherPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteLauncher.exe");
+  const eacPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping_EAC.exe");
+
+  if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
+
+  const args = [
+    `-AUTH_LOGIN=${accountId}@starglaze`,
+    `-AUTH_PASSWORD=${accessToken}`,
+    `-AUTH_TYPE=epic`,
+    `-epicapp=Fortnite`,
+    `-epicenv=Prod`,
+    `-epiclocale=en-us`,
+    `-epicportal`,
+    `-skippatchcheck`,
+    `-nobe`,
+    `-fromfl=eac`,
+    `-fltoken=hchc0906bb1bg83c3934fa31`,
+    `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ`,
+    `-noeac`,
+  ];
+
+  try {
+    // Start FortniteLauncher.exe suspended (anti-cheat expects it)
+    if (fs.existsSync(launcherPath)) {
+      const launcher = spawn(launcherPath, [], { detached: true, stdio: "ignore" });
+      launcher.unref();
+    }
+
+    // Start EAC wrapper suspended
+    if (fs.existsSync(eacPath)) {
+      const eac = spawn(eacPath, [], { detached: true, stdio: "ignore" });
+      eac.unref();
+    }
+
+    // Start the actual game
+    const game = spawn(exePath, args, {
+      detached: true,
+      stdio: "ignore",
+      cwd: path.dirname(exePath),
+    });
+    game.unref();
+
+    // Update last played on the build
+    const config = loadConfig();
+    const build = (config.builds || []).find((b) => b.path === buildPath);
+    if (build) {
+      build.lastPlayed = new Date().toISOString();
+      saveConfig(config);
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: "Failed to launch game" };
+  }
+});
+
+// Legacy select-game-path (kept for settings compatibility)
 ipcMain.handle("select-game-path", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openDirectory"],
@@ -65,60 +214,6 @@ ipcMain.handle("select-game-path", async () => {
     return result.filePaths[0];
   }
   return null;
-});
-
-ipcMain.handle("get-config", () => loadConfig());
-
-ipcMain.handle("save-config", (_, config) => {
-  const current = loadConfig();
-  const merged = { ...current, ...config };
-  saveConfig(merged);
-  return merged;
-});
-
-ipcMain.handle("minimize-window", () => mainWindow.minimize());
-ipcMain.handle("maximize-window", () => {
-  if (mainWindow.isMaximized()) mainWindow.unmaximize();
-  else mainWindow.maximize();
-});
-ipcMain.handle("close-window", () => mainWindow.close());
-
-ipcMain.handle("open-external", (_, url) => {
-  return shell.openExternal(url);
-});
-
-ipcMain.handle("launch-game", async (_, launchArgs) => {
-  const config = loadConfig();
-  if (!config.gamePath) return { success: false, error: "No game path set" };
-
-  const exe = path.join(
-    config.gamePath,
-    "FortniteGame",
-    "Binaries",
-    "Win64",
-    "FortniteClient-Win64-Shipping.exe"
-  );
-
-  if (!fs.existsSync(exe)) {
-    return { success: false, error: "Fortnite executable not found" };
-  }
-
-  const args = launchArgs || [];
-
-  try {
-    const child = spawn(exe, args, {
-      detached: true,
-      stdio: "ignore",
-    });
-    child.unref();
-
-    config.lastPlayed = new Date().toISOString();
-    saveConfig(config);
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
 });
 
 app.whenReady().then(createWindow);

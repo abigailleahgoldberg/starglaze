@@ -1,15 +1,18 @@
 /* ===== Star Glaze Launcher — App Logic ===== */
 
+// ===== ANTI-SNIFF: Obfuscated backend URL =====
+const _b = atob("aHR0cDovLzI2LjI1Mi4xMjMuMjQzOjM1NTE="); // decoded at runtime
+
 const content = document.getElementById("content");
 let currentPage = "login";
 let config = {
   gamePath: "",
   lastPlayed: null,
-  backendUrl: "http://26.252.123.243:3551",
   accessToken: null,
   refreshToken: null,
   accountId: null,
   displayName: null,
+  builds: [],
   settings: {},
 };
 
@@ -17,11 +20,47 @@ const CLIENT_CREDENTIALS = "ec684b8c687f479fadea3cb2ad83f5c6:e1f31c211f284131862
 const DISCORD_CLIENT_ID = "1383979067250053200";
 const CLIENT_CREDENTIALS_B64 = btoa(CLIENT_CREDENTIALS);
 
+// ===== ANTI-SNIFF: Override console methods to filter backend IP =====
+(function() {
+  const _ip = _b;
+  const _host = _ip.replace(/^https?:\/\//, "");
+  const origLog = console.log;
+  const origWarn = console.warn;
+  const origError = console.error;
+
+  function sanitize(args) {
+    return args.map((a) => {
+      if (typeof a === "string" && (a.includes(_host) || a.includes(_ip))) {
+        return a.replace(new RegExp(_host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****")
+               .replace(new RegExp(_ip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****");
+      }
+      return a;
+    });
+  }
+
+  console.log = function(...args) { origLog.apply(console, sanitize(args)); };
+  console.warn = function(...args) { origWarn.apply(console, sanitize(args)); };
+  console.error = function(...args) { origError.apply(console, sanitize(args)); };
+})();
+
+// ===== ANTI-SNIFF: Disable right-click & devtools shortcuts =====
+if (window.starglaze) {
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "F12") { e.preventDefault(); return; }
+  if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) { e.preventDefault(); return; }
+  if (e.ctrlKey && e.shiftKey && (e.key === "J" || e.key === "j")) { e.preventDefault(); return; }
+  if (e.ctrlKey && (e.key === "U" || e.key === "u")) { e.preventDefault(); return; }
+});
+
 // ===== API Helper =====
 const API = {
-  get baseUrl() { return config.backendUrl || "http://26.252.123.243:3551"; },
+  get baseUrl() { return _b; },
   get token() { return config.accessToken; },
   get accountId() { return config.accountId; },
+  get obfuscatedUrl() { return "***.***.***:****"; },
 
   async fetch(path, opts = {}) {
     const headers = { ...opts.headers };
@@ -36,7 +75,7 @@ const API = {
       if (ct.includes("application/json")) return res.json();
       return res.text();
     } catch (err) {
-      console.error("API error:", path, err);
+      console.error("Connection Error");
       return null;
     }
   },
@@ -49,6 +88,55 @@ const API = {
     const headers = { "Content-Type": "application/json", ...opts.headers };
     return this.fetch(path, { method: "POST", body: JSON.stringify(body), headers, ...opts });
   },
+};
+
+// ===== Version Map =====
+const VERSION_MAP = {
+  "8.00": "Season 8",
+  "8.10": "Season 8",
+  "8.20": "Season 8",
+  "8.30": "Season 8",
+  "8.40": "Season 8",
+  "8.50": "Season 8",
+  "8.51": "Season 8",
+  "7.00": "Season 7",
+  "7.10": "Season 7",
+  "7.20": "Season 7",
+  "7.30": "Season 7",
+  "7.40": "Season 7",
+  "6.00": "Season 6",
+  "6.10": "Season 6",
+  "6.20": "Season 6",
+  "6.21": "Season 6",
+  "6.30": "Season 6",
+  "6.31": "Season 6",
+  "5.00": "Season 5",
+  "5.10": "Season 5",
+  "5.20": "Season 5",
+  "5.21": "Season 5",
+  "5.30": "Season 5",
+  "5.40": "Season 5",
+  "5.41": "Season 5",
+  "4.00": "Season 4",
+  "4.10": "Season 4",
+  "4.20": "Season 4",
+  "4.30": "Season 4",
+  "4.40": "Season 4",
+  "4.50": "Season 4",
+  "3.00": "Season 3",
+  "3.10": "Season 3",
+  "3.20": "Season 3",
+  "3.30": "Season 3",
+  "3.50": "Season 3",
+  "2.00": "Season 2",
+  "2.10": "Season 2",
+  "2.20": "Season 2",
+  "2.30": "Season 2",
+  "2.40": "Season 2",
+  "2.50": "Season 2",
+  "1.00": "Season 1",
+  "1.10": "Season 1",
+  "1.20": "Season 1",
 };
 
 // ===== Auth =====
@@ -75,7 +163,7 @@ async function doLogin(email, password) {
     }
     return { success: false, error: data.errorMessage || data.error_description || "Login failed" };
   } catch (err) {
-    return { success: false, error: err.message || "Could not connect to server" };
+    return { success: false, error: "Connection Error" };
   }
 }
 
@@ -138,9 +226,13 @@ function renderSidebar() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
           <span>Play</span>
         </button>
+        <button class="nav-item${currentPage === "builds" ? " active" : ""}" data-page="builds">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
+          <span>Builds</span>
+        </button>
       </div>
       <div class="nav-section">
-        <span class="nav-label">INVENTORY</span>
+        <span class="nav-label">BROWSE</span>
         <button class="nav-item${currentPage === "locker" ? " active" : ""}" data-page="locker">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
           <span>Locker</span>
@@ -149,20 +241,20 @@ function renderSidebar() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/></svg>
           <span>Item Shop</span>
         </button>
-      </div>
-      <div class="nav-section">
-        <span class="nav-label">SOCIAL</span>
         <button class="nav-item${currentPage === "leaderboard" ? " active" : ""}" data-page="leaderboard">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10"/><path d="M17 4v8a5 5 0 0 1-10 0V4"/><path d="M5 8h14"/></svg>
           <span>Leaderboard</span>
         </button>
+      </div>
+      <div class="nav-section">
+        <span class="nav-label">SOCIAL</span>
         <button class="nav-item${currentPage === "friends" ? " active" : ""}" data-page="friends">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>Friends</span>
         </button>
       </div>
       <div class="nav-section">
-        <span class="nav-label">SYSTEM</span>
+        <span class="nav-label">OTHER</span>
         <button class="nav-item${currentPage === "server" ? " active" : ""}" data-page="server">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
           <span>Server Status</span>
@@ -252,12 +344,19 @@ function openExternal(url) {
   }
 }
 
+function getBuildDisplayName(version) {
+  if (!version) return "Unknown Build";
+  const season = VERSION_MAP[version];
+  return season ? `${season} (${version})` : `Build ${version}`;
+}
+
 // ===== Page Renderers =====
 function renderPage(page) {
   const renderers = {
     login: renderLogin,
     home: renderHome,
     play: renderPlay,
+    builds: renderBuilds,
     locker: renderLocker,
     shop: renderShop,
     leaderboard: renderLeaderboard,
@@ -323,7 +422,7 @@ function renderLogin() {
   });
 
   document.getElementById("btn-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/login"); // Redirects to Discord OAuth
+    openExternal(API.baseUrl + "/login");
   });
 }
 
@@ -403,7 +502,6 @@ async function loadServerStatus() {
   try {
     const start = Date.now();
     const res = await fetch(API.baseUrl + "/lightswitch/api/service/Fortnite/status");
-    const ms = Date.now() - start;
     if (res.ok) {
       el.textContent = "Online";
       el.style.color = "var(--green-online)";
@@ -440,11 +538,132 @@ async function loadHomeShopPreview() {
   grid.innerHTML = first4.map((entry) => renderShopCard(entry)).join("");
 }
 
+// ===== BUILDS PAGE =====
+function renderBuilds() {
+  const builds = config.builds || [];
+
+  content.innerHTML = `
+    <div class="page-builds">
+      <div class="builds-header">
+        <div>
+          <h1 class="page-title">My Builds</h1>
+          <p class="page-subtitle">Manage your Fortnite game builds</p>
+        </div>
+        <button class="btn-primary" id="btn-import-build">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Import Build
+        </button>
+      </div>
+
+      <div class="builds-list" id="builds-list">
+        ${builds.length === 0 ? `
+          <div class="builds-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
+            <h3>No builds imported</h3>
+            <p>Click "Import Build" to add a Fortnite build folder</p>
+          </div>
+        ` : builds.map((build) => `
+          <div class="build-card" data-build-id="${escapeHtml(build.id)}">
+            <div class="build-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
+            </div>
+            <div class="build-info">
+              <h3 class="build-name">${escapeHtml(build.name)}</h3>
+              <p class="build-path">${escapeHtml(build.path)}</p>
+              <div class="build-meta">
+                <span class="build-version">${escapeHtml(build.version || "Unknown")}</span>
+                <span class="build-status status-${build.status || "ready"}">${(build.status || "ready") === "ready" ? "Ready" : build.status === "error" ? "Error" : "Needs Update"}</span>
+                ${build.lastPlayed ? `<span class="build-last-played">Last played: ${new Date(build.lastPlayed).toLocaleDateString()}</span>` : ""}
+              </div>
+            </div>
+            <div class="build-actions">
+              <button class="btn-primary build-launch-btn" data-build-id="${escapeHtml(build.id)}" style="padding:8px 20px;font-size:13px">Launch</button>
+              <button class="btn-browse btn-danger-small build-remove-btn" data-build-id="${escapeHtml(build.id)}">Remove</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  // Import build button
+  document.getElementById("btn-import-build")?.addEventListener("click", async () => {
+    if (!window.starglaze) return;
+
+    const result = await window.starglaze.importBuild();
+    if (!result) return;
+
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
+
+    const name = getBuildDisplayName(result.version);
+    const build = {
+      id: result.id,
+      name: name,
+      path: result.path,
+      version: result.version,
+      exePath: result.exePath,
+      lastPlayed: null,
+      status: "ready",
+    };
+
+    if (!config.builds) config.builds = [];
+    config.builds.push(build);
+    await persistConfig();
+    renderBuilds();
+  });
+
+  // Launch buttons
+  document.querySelectorAll(".build-launch-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const buildId = btn.dataset.buildId;
+      const build = (config.builds || []).find((b) => b.id === buildId);
+      if (!build) return;
+
+      btn.textContent = "Launching...";
+      btn.disabled = true;
+
+      if (window.starglaze) {
+        const result = await window.starglaze.launchGame({
+          buildPath: build.path,
+          accessToken: config.accessToken,
+          accountId: config.accountId,
+        });
+
+        if (!result.success) {
+          btn.textContent = "Error";
+          setTimeout(() => { btn.textContent = "Launch"; btn.disabled = false; }, 3000);
+          return;
+        }
+
+        build.lastPlayed = new Date().toISOString();
+        await persistConfig();
+        btn.textContent = "Running";
+      } else {
+        setTimeout(() => { btn.textContent = "Launch"; btn.disabled = false; }, 2000);
+      }
+    });
+  });
+
+  // Remove buttons
+  document.querySelectorAll(".build-remove-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const buildId = btn.dataset.buildId;
+      config.builds = (config.builds || []).filter((b) => b.id !== buildId);
+      await persistConfig();
+      if (window.starglaze) await window.starglaze.removeBuild(buildId);
+      renderBuilds();
+    });
+  });
+}
+
 // ===== PLAY PAGE =====
 function renderPlay() {
-  const pathText = config.gamePath || "No folder selected";
-  const pathClass = config.gamePath ? "play-path-text set" : "play-path-text";
-  const canLaunch = !!config.gamePath;
+  const builds = config.builds || [];
+  const hasBuilds = builds.length > 0;
+  const selectedBuildId = config.selectedBuildId || (builds[0]?.id || "");
 
   content.innerHTML = `
     <div class="page-play">
@@ -459,80 +678,75 @@ function renderPlay() {
         </div>
         <div class="play-info-item">
           <span class="play-info-label">Backend</span>
-          <span class="play-info-value">${escapeHtml(API.baseUrl)}</span>
+          <span class="play-info-value">${API.obfuscatedUrl}</span>
         </div>
       </div>
 
-      <div class="play-path">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E5E70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
-        <span class="${pathClass}" id="path-display">${escapeHtml(pathText)}</span>
-        <button class="btn-browse" id="btn-browse">Browse</button>
-      </div>
-
-      <button class="launch-btn" id="btn-launch" ${canLaunch ? "" : "disabled"}>LAUNCH</button>
-
-      <div class="launch-args-display" id="launch-args" style="display:none">
-        <h4>Launch Arguments</h4>
-        <code id="launch-args-text"></code>
-      </div>
+      ${hasBuilds ? `
+        <div class="play-build-select">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E5E70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
+          <select class="build-dropdown" id="build-select">
+            ${builds.map((b) => `<option value="${escapeHtml(b.id)}" ${b.id === selectedBuildId ? "selected" : ""}>${escapeHtml(b.name)}</option>`).join("")}
+          </select>
+        </div>
+        <button class="launch-btn" id="btn-launch">LAUNCH</button>
+      ` : `
+        <div class="play-no-builds">
+          <p style="color:var(--text-muted);margin-bottom:16px">Import a build first to start playing</p>
+          <button class="btn-primary" id="btn-go-builds">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Go to Builds
+          </button>
+        </div>
+      `}
 
       ${config.lastPlayed ? `<p style="margin-top:16px;font-size:11px;color:var(--text-muted)">Last played: ${new Date(config.lastPlayed).toLocaleDateString()}</p>` : ""}
     </div>
   `;
 
-  document.getElementById("btn-browse")?.addEventListener("click", async () => {
-    if (window.starglaze) {
-      const path = await window.starglaze.selectGamePath();
-      if (path) {
-        config.gamePath = path;
-        await persistConfig();
-        document.getElementById("path-display").textContent = path;
-        document.getElementById("path-display").className = "play-path-text set";
-        document.getElementById("btn-launch").disabled = false;
-      }
-    } else {
-      config.gamePath = "C:\\Fortnite\\FortniteGame";
-      document.getElementById("path-display").textContent = config.gamePath;
-      document.getElementById("path-display").className = "play-path-text set";
-      document.getElementById("btn-launch").disabled = false;
-    }
+  // Save selected build
+  document.getElementById("build-select")?.addEventListener("change", async (e) => {
+    config.selectedBuildId = e.target.value;
+    await persistConfig();
   });
 
+  // Go to builds page
+  document.getElementById("btn-go-builds")?.addEventListener("click", () => {
+    navigateTo("builds");
+  });
+
+  // Launch button
   document.getElementById("btn-launch")?.addEventListener("click", async () => {
     const btn = document.getElementById("btn-launch");
+    const selectEl = document.getElementById("build-select");
+    const buildId = selectEl?.value;
+    const build = (config.builds || []).find((b) => b.id === buildId);
+
+    if (!build) {
+      btn.textContent = "NO BUILD SELECTED";
+      setTimeout(() => { btn.textContent = "LAUNCH"; }, 2000);
+      return;
+    }
+
     btn.textContent = "LAUNCHING...";
     btn.disabled = true;
 
-    const launchArgs = [
-      `-AUTH_LOGIN=unused`,
-      `-AUTH_PASSWORD=${config.accessToken}`,
-      `-AUTH_TYPE=epic`,
-      `-epicapp=Fortnite`,
-      `-epicenv=Prod`,
-      `-epiclocale=en-us`,
-      `-epicportal`,
-      `-skippatchcheck`,
-      `-nobe`,
-      `-fromfl=eac`,
-      `-fltoken=none`,
-      `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9`,
-    ];
-
-    // Show launch args
-    const argsDisplay = document.getElementById("launch-args");
-    const argsText = document.getElementById("launch-args-text");
-    if (argsDisplay && argsText) {
-      argsDisplay.style.display = "block";
-      argsText.textContent = launchArgs.join(" ");
-    }
-
     if (window.starglaze) {
-      const result = await window.starglaze.launchGame(launchArgs);
+      const result = await window.starglaze.launchGame({
+        buildPath: build.path,
+        accessToken: config.accessToken,
+        accountId: config.accountId,
+      });
+
       if (!result.success) {
-        btn.textContent = result.error.toUpperCase();
+        btn.textContent = result.error ? result.error.toUpperCase() : "ERROR";
         setTimeout(() => { btn.textContent = "LAUNCH"; btn.disabled = false; }, 3000);
         return;
       }
+
+      build.lastPlayed = new Date().toISOString();
+      config.lastPlayed = build.lastPlayed;
+      await persistConfig();
       btn.textContent = "RUNNING";
     } else {
       setTimeout(() => { btn.textContent = "LAUNCH"; btn.disabled = false; }, 2000);
@@ -540,12 +754,12 @@ function renderPlay() {
   });
 }
 
-// ===== LOCKER PAGE =====
+// ===== LOCKER PAGE (Season 8 filtered) =====
 function renderLocker() {
   content.innerHTML = `
     <div class="page-locker">
       <h1 class="page-title">Locker</h1>
-      <p class="page-subtitle">Your cosmetics collection</p>
+      <p class="page-subtitle">Your cosmetics collection (Season 8 and earlier)</p>
       <div class="cat-tabs" id="locker-tabs">
         <button class="cat-tab active" data-type="AthenaCharacter">Outfits <span class="cat-count" id="count-AthenaCharacter"></span></button>
         <button class="cat-tab" data-type="AthenaBackpack">Back Blings <span class="cat-count" id="count-AthenaBackpack"></span></button>
@@ -563,6 +777,29 @@ function renderLocker() {
   let allItems = {};
   let activeType = "AthenaCharacter";
   const iconCache = {};
+  const cosmeticDataCache = {};
+
+  async function getCosmeticData(cosmeticId) {
+    if (cosmeticDataCache[cosmeticId]) return cosmeticDataCache[cosmeticId];
+    try {
+      const res = await fetch(`https://fortnite-api.com/v2/cosmetics/br/${cosmeticId}`);
+      const data = await res.json();
+      cosmeticDataCache[cosmeticId] = data?.data || null;
+      return data?.data || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function isSeasonValid(cosmeticData) {
+    if (!cosmeticData || !cosmeticData.introduction) return true; // show if unknown
+    const intro = cosmeticData.introduction;
+    const chapter = parseInt(intro.chapter) || 1;
+    const season = parseInt(intro.season) || 1;
+    if (chapter > 1) return false;
+    if (season > 8) return false;
+    return true;
+  }
 
   async function loadProfile() {
     const data = await API.postJSON(
@@ -582,38 +819,43 @@ function renderLocker() {
     }
 
     // Group items by type
-    allItems = {};
+    const rawItems = {};
     for (const [itemId, item] of Object.entries(profile.items)) {
       const tid = item.templateId || "";
       const colonIdx = tid.indexOf(":");
       if (colonIdx === -1) continue;
       const type = tid.substring(0, colonIdx);
       const cosmId = tid.substring(colonIdx + 1);
-      if (!allItems[type]) allItems[type] = [];
-      allItems[type].push({ itemId, templateId: tid, type, cosmeticId: cosmId, attributes: item.attributes });
+      if (!rawItems[type]) rawItems[type] = [];
+      rawItems[type].push({ itemId, templateId: tid, type, cosmeticId: cosmId, attributes: item.attributes });
+    }
+
+    // Filter items by Season 8 and earlier using fortnite-api.com data
+    const types = ["AthenaCharacter", "AthenaBackpack", "AthenaPickaxe", "AthenaGlider", "AthenaDance", "AthenaItemWrap"];
+    allItems = {};
+
+    for (const t of types) {
+      const items = rawItems[t] || [];
+      const filtered = [];
+
+      // Process in batches to avoid overwhelming the API
+      for (const item of items) {
+        const cosData = await getCosmeticData(item.cosmeticId);
+        if (isSeasonValid(cosData)) {
+          filtered.push(item);
+        }
+      }
+
+      allItems[t] = filtered;
     }
 
     // Update counts
-    const types = ["AthenaCharacter", "AthenaBackpack", "AthenaPickaxe", "AthenaGlider", "AthenaDance", "AthenaItemWrap"];
     for (const t of types) {
       const el = document.getElementById(`count-${t}`);
       if (el) el.textContent = `(${(allItems[t] || []).length})`;
     }
 
     renderLockerItems(activeType);
-  }
-
-  async function getIcon(cosmeticId) {
-    if (iconCache[cosmeticId]) return iconCache[cosmeticId];
-    try {
-      const res = await fetch(`https://fortnite-api.com/v2/cosmetics/br/${cosmeticId}`);
-      const data = await res.json();
-      const url = data?.data?.images?.smallIcon || data?.data?.images?.icon || "";
-      iconCache[cosmeticId] = url;
-      return url;
-    } catch {
-      return "";
-    }
   }
 
   function renderLockerItems(type) {
@@ -633,7 +875,8 @@ function renderLocker() {
 
     // Load icons lazily
     items.forEach(async (item, idx) => {
-      const url = await getIcon(item.cosmeticId);
+      const cosData = cosmeticDataCache[item.cosmeticId];
+      const url = cosData?.images?.smallIcon || cosData?.images?.icon || "";
       const cards = grid.querySelectorAll(".cosmetic-card");
       if (cards[idx]) {
         const placeholder = cards[idx].querySelector(".cosm-img-placeholder");
@@ -833,7 +1076,6 @@ function renderFriends() {
     const username = input.value.trim();
     if (!username) return;
 
-    // Look up account by display name
     const lookup = await API.fetch(`/account/api/public/account/displayName/${encodeURIComponent(username)}`);
     if (!lookup || !lookup.id) {
       alert("User not found: " + username);
@@ -878,7 +1120,6 @@ async function loadFriends() {
 
   if (friends.length > 0) {
     html += `<h3 class="friends-section-title">Friends (${friends.length})</h3>`;
-    // Lookup display names
     const accountIds = friends.map(f => f.accountId).slice(0, 50);
     let accountMap = {};
     if (accountIds.length > 0) {
@@ -951,8 +1192,8 @@ function renderServer() {
           <div class="info-label">Response Time</div>
         </div>
         <div class="server-info-card">
-          <div class="info-value" id="srv-url" style="font-size:14px;word-break:break-all">${escapeHtml(API.baseUrl)}</div>
-          <div class="info-label">Backend URL</div>
+          <div class="info-value" id="srv-url" style="font-size:14px;word-break:break-all">${API.obfuscatedUrl}</div>
+          <div class="info-label">Backend</div>
         </div>
       </div>
 
@@ -992,7 +1233,7 @@ async function checkServerStatus() {
         <div class="log-entry"><div class="log-dot green"></div><span class="log-msg">Status: ${escapeHtml(data.status || "UP")}</span></div>
         <div class="log-entry"><div class="log-dot green"></div><span class="log-msg">Message: ${escapeHtml(data.message || "Fortnite is online")}</span></div>
         <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Response time: ${ms}ms</span></div>
-        <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Backend: ${escapeHtml(API.baseUrl)}</span></div>
+        <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Backend: Connected</span></div>
       `;
     }
   } catch (err) {
@@ -1004,8 +1245,7 @@ async function checkServerStatus() {
     if (detailsEl) {
       detailsEl.innerHTML = `
         <div class="log-entry"><div class="log-dot red"></div><span class="log-msg">Could not connect to backend</span></div>
-        <div class="log-entry"><div class="log-dot red"></div><span class="log-msg">${escapeHtml(err.message)}</span></div>
-        <div class="log-entry"><div class="log-dot yellow"></div><span class="log-msg">URL: ${escapeHtml(API.baseUrl)}</span></div>
+        <div class="log-entry"><div class="log-dot red"></div><span class="log-msg">Connection Error</span></div>
       `;
     }
   }
@@ -1013,6 +1253,8 @@ async function checkServerStatus() {
 
 // ===== SETTINGS PAGE =====
 function renderSettings() {
+  const showAdvanced = config.settings?.showAdvanced || false;
+
   content.innerHTML = `
     <div class="page-settings">
       <h1 class="page-title">Settings</h1>
@@ -1021,23 +1263,24 @@ function renderSettings() {
       <div class="settings-section">
         <h3>Backend</h3>
         <div class="setting-row">
+          <span class="setting-label">Connection Status</span>
+          <span class="setting-value" id="settings-backend-status">Checking...</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Show Advanced</span>
+          <label class="mod-toggle">
+            <input type="checkbox" id="toggle-advanced" ${showAdvanced ? "checked" : ""}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-row" id="advanced-url-row" style="display:${showAdvanced ? "flex" : "none"}">
           <span class="setting-label">Backend URL</span>
-          <div class="setting-input-group">
-            <input class="search-input" id="settings-backend-url" value="${escapeHtml(config.backendUrl || "http://26.252.123.243:3551")}" style="width:300px">
-            <button class="btn-browse" id="btn-save-backend">Save</button>
-          </div>
+          <span class="setting-value" style="font-family:monospace;font-size:12px">${escapeHtml(API.baseUrl)}</span>
         </div>
       </div>
 
       <div class="settings-section">
         <h3>General</h3>
-        <div class="setting-row">
-          <span class="setting-label">Game Path</span>
-          <div class="setting-input-group">
-            <span class="setting-value">${escapeHtml(config.gamePath || "Not set")}</span>
-            <button class="btn-browse" id="btn-settings-browse">Browse</button>
-          </div>
-        </div>
         <div class="setting-row">
           <span class="setting-label">Launch on Startup</span>
           <label class="mod-toggle"><input type="checkbox"><span class="slider"></span></label>
@@ -1059,7 +1302,7 @@ function renderSettings() {
           <span class="setting-value" style="font-family:monospace;font-size:11px">${escapeHtml(config.accountId || "—")}</span>
         </div>
         <div class="setting-row">
-          <span class="setting-label">Register on Website</span> <!-- OAuth disabled -->
+          <span class="setting-label">Register on Website</span>
           <button class="btn-browse" id="btn-open-register">Open in Browser</button>
         </div>
         <div class="setting-row">
@@ -1076,31 +1319,38 @@ function renderSettings() {
         </div>
         <div class="setting-row">
           <span class="setting-label">Backend</span>
-          <span class="setting-value">${escapeHtml(API.baseUrl)}</span>
+          <span class="setting-value">${showAdvanced ? escapeHtml(API.baseUrl) : "Connected"}</span>
         </div>
       </div>
     </div>
   `;
 
-  document.getElementById("btn-save-backend")?.addEventListener("click", async () => {
-    const urlInput = document.getElementById("settings-backend-url");
-    let url = urlInput.value.trim();
-    if (url.endsWith("/")) url = url.slice(0, -1);
-    config.backendUrl = url;
-    await persistConfig();
-    urlInput.style.borderColor = "var(--green-online)";
-    setTimeout(() => { urlInput.style.borderColor = ""; }, 1500);
-  });
-
-  document.getElementById("btn-settings-browse")?.addEventListener("click", async () => {
-    if (window.starglaze) {
-      const path = await window.starglaze.selectGamePath();
-      if (path) {
-        config.gamePath = path;
-        await persistConfig();
-        renderSettings();
+  // Check backend status
+  (async () => {
+    const statusEl = document.getElementById("settings-backend-status");
+    if (!statusEl) return;
+    try {
+      const res = await fetch(API.baseUrl + "/lightswitch/api/service/Fortnite/status");
+      if (res.ok) {
+        statusEl.textContent = "Connected";
+        statusEl.style.color = "var(--green-online)";
+      } else {
+        statusEl.textContent = "Disconnected";
+        statusEl.style.color = "var(--red-danger)";
       }
+    } catch {
+      statusEl.textContent = "Disconnected";
+      statusEl.style.color = "var(--red-danger)";
     }
+  })();
+
+  // Show Advanced toggle
+  document.getElementById("toggle-advanced")?.addEventListener("change", async (e) => {
+    const show = e.target.checked;
+    if (!config.settings) config.settings = {};
+    config.settings.showAdvanced = show;
+    await persistConfig();
+    document.getElementById("advanced-url-row").style.display = show ? "flex" : "none";
   });
 
   document.getElementById("btn-open-register")?.addEventListener("click", () => {

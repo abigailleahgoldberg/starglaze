@@ -1526,6 +1526,201 @@ body {
   background: rgba(139, 123, 184, 0.05);
 }
 
+/* ===== BUILDS PAGE ===== */
+.page-builds {
+  padding: 32px 40px;
+}
+
+.builds-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.builds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.builds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-card);
+  border-radius: var(--radius-lg);
+}
+
+.builds-empty svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.builds-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.builds-empty p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.build-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  transition: var(--transition);
+}
+
+.build-card:hover {
+  border-color: rgba(139, 123, 184, 0.2);
+  background: var(--bg-card-hover);
+}
+
+.build-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(139, 123, 184, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--purple-primary);
+  flex-shrink: 0;
+}
+
+.build-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.build-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.build-path {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+  font-family: monospace;
+}
+
+.build-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.build-version {
+  color: var(--purple-primary);
+  font-weight: 600;
+}
+
+.build-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+
+.build-status.status-ready {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--green-online);
+}
+
+.build-status.status-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red-danger);
+}
+
+.build-status.status-update {
+  background: rgba(250, 204, 21, 0.1);
+  color: var(--yellow-warn);
+}
+
+.build-last-played {
+  color: var(--text-muted);
+}
+
+.build-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== PLAY PAGE BUILD SELECT ===== */
+.play-build-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  margin-bottom: 12px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.build-dropdown {
+  flex: 1;
+  padding: 6px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239898A8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+
+.build-dropdown:focus {
+  border-color: var(--purple-primary);
+  box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+.build-dropdown option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.play-no-builds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
 /* ===== SETTINGS ADDITIONS ===== */
 .setting-input-group {
   display: flex;

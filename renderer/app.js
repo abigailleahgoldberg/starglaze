@@ -151,11 +151,10 @@ const VERSION_MAP = {
 };
 
 // ===== Auth =====
-async function doLogin(email, password) {
+async function loginWithExchangeCode(code) {
   const body = new URLSearchParams({
-    grant_type: "password",
-    username: email,
-    password: password,
+    grant_type: "exchange_code",
+    exchange_code: code,
   });
   try {
     const res = await fetch(API._b + "/account/api/oauth/token", {
@@ -400,58 +399,52 @@ function renderLogin() {
       <h1 class="login-title"><span class="star">Star </span><span class="glaze">Glaze</span></h1>
       <p class="login-subtitle">Welcome to Star Glaze</p>
 
-      <button class="login-register-btn" id="btn-register" style="display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:360px;padding:14px 28px;background:#5865F2;color:white;border:none;border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(88,101,242,0.3);">
-        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="white"><path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53.05s5-12.68 11.43-12.68S53.89 46 53.88 53.05 48.84 65.69 42.45 65.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53.05s5-12.68 11.44-12.68S96.23 46 96.12 53.05 91.08 65.69 84.69 65.69Z"/></svg>
-        Create Account
+      <button class="login-discord-btn" id="btn-discord-login" style="display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:360px;padding:16px 28px;background:#5865F2;color:white;border:none;border-radius:var(--radius-md);font-size:16px;font-weight:700;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(88,101,242,0.3);margin-bottom:24px;">
+        <svg width="22" height="22" viewBox="0 0 127.14 96.36" fill="white"><path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53.05s5-12.68 11.43-12.68S53.89 46 53.88 53.05 48.84 65.69 42.45 65.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53.05s5-12.68 11.44-12.68S96.23 46 96.12 53.05 91.08 65.69 84.69 65.69Z"/></svg>
+        Login with Discord
       </button>
 
-      <div class="login-divider" style="display:flex;align-items:center;gap:12px;width:100%;max-width:360px;margin:20px 0">
-        <div style="flex:1;height:1px;background:var(--border-card)"></div>
-        <span style="color:var(--text-muted);font-size:13px;white-space:nowrap">Already have an account?</span>
-        <div style="flex:1;height:1px;background:var(--border-card)"></div>
-      </div>
-
-      <form class="login-form" id="login-form">
-        <div class="login-field">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="your@email.com" required autocomplete="email">
+      <details class="login-manual-section" style="width:100%;max-width:360px;">
+        <summary style="color:var(--text-muted);font-size:13px;cursor:pointer;text-align:center;list-style:none;user-select:none;">
+          <span style="border-bottom:1px dashed var(--text-muted);">Enter code manually</span>
+        </summary>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px;">
+          <div class="login-field">
+            <label>Exchange Code</label>
+            <input type="text" id="login-code" placeholder="Paste your code here" autocomplete="off" style="width:100%;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border-card);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;">
+          </div>
+          <div class="login-error" id="login-error"></div>
+          <button class="login-btn" id="login-btn" style="width:100%;padding:12px;background:var(--accent-primary);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);">VERIFY</button>
         </div>
-        <div class="login-field">
-          <label>Password</label>
-          <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
-        </div>
-        <div class="login-error" id="login-error"></div>
-        <button type="submit" class="login-btn" id="login-btn">LOGIN</button>
-      </form>
+      </details>
 
-      <p class="login-hint">Create your account via Discord, then sign in with your email and password.</p>
+      <p class="login-hint" style="margin-top:20px;">Sign in via Discord. Your account is created automatically.</p>
     </div>
   `;
 
-  document.getElementById("login-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("login-email").value.trim();
-    const password = document.getElementById("login-password").value;
+  document.getElementById("btn-discord-login")?.addEventListener("click", () => {
+    openExternal(API.websiteUrl + "/login");
+  });
+
+  document.getElementById("login-btn")?.addEventListener("click", async () => {
+    const code = document.getElementById("login-code").value.trim();
+    if (!code) return;
     const btn = document.getElementById("login-btn");
     const errorEl = document.getElementById("login-error");
     errorEl.textContent = "";
-    btn.textContent = "LOGGING IN...";
+    btn.textContent = "VERIFYING...";
     btn.disabled = true;
 
-    const result = await doLogin(email, password);
+    const result = await loginWithExchangeCode(code);
     if (result.success) {
       currentPage = "home";
       renderSidebar();
       renderPage("home");
     } else {
       errorEl.textContent = result.error;
-      btn.textContent = "LOGIN";
+      btn.textContent = "VERIFY";
       btn.disabled = false;
     }
-  });
-
-  document.getElementById("btn-register")?.addEventListener("click", () => {
-    openExternal(API.websiteUrl + "/login");
   });
 }
 
@@ -1463,6 +1456,15 @@ async function init() {
   if (window.starglaze) {
     config = { ...config, ...(await window.starglaze.getConfig()) };
   }
+
+  window.starglaze?.onOAuthCallback?.(async ({ code, username }) => {
+    const result = await loginWithExchangeCode(code);
+    if (result.success) {
+      currentPage = "home";
+      renderSidebar();
+      renderPage("home");
+    }
+  });
 
   if (isLoggedIn()) {
     // Verify token is still valid

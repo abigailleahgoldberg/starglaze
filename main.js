@@ -6,6 +6,44 @@ const crypto = require("crypto");
 
 let mainWindow;
 
+// ===== Deep Link Protocol =====
+app.setAsDefaultProtocolClient("starglaze");
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
+
+function handleDeepLink(url) {
+  if (!url || !url.startsWith("starglaze://")) return;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "auth") {
+      const code = parsed.searchParams.get("code");
+      const username = parsed.searchParams.get("username");
+      if (code && mainWindow) {
+        mainWindow.webContents.send("oauth-callback", { code, username });
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    }
+  } catch {}
+}
+
+app.on("second-instance", (event, argv) => {
+  const deepLinkArg = argv.find((arg) => arg.startsWith("starglaze://"));
+  if (deepLinkArg) handleDeepLink(deepLinkArg);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
 const CONFIG_PATH = path.join(app.getPath("userData"), "starglaze-config.json");
 
 const DEFAULT_CONFIG = {

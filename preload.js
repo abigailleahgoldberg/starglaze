@@ -21,4 +21,7 @@ contextBridge.exposeInMainWorld("starglaze", {
 
   // Legacy
   selectGamePath: () => ipcRenderer.invoke("select-game-path"),
+
+  // OAuth deep link callback
+  onOAuthCallback: (callback) => ipcRenderer.on("oauth-callback", (_, data) => callback(data)),
 });

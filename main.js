@@ -184,7 +184,6 @@ ipcMain.handle("remove-build", (_, buildId) => {
 ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId }) => {
   const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
   const launcherPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteLauncher.exe");
-  const eacPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping_EAC.exe");
 
   if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
 
@@ -198,26 +197,20 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId }) =
     `-epicportal`,
     `-skippatchcheck`,
     `-nobe`,
+    `-noeac`,
     `-fromfl=eac`,
     `-fltoken=hchc0906bb1bg83c3934fa31`,
     `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ`,
-    `-noeac`,
   ];
 
   try {
-    // Start FortniteLauncher.exe suspended (anti-cheat expects it)
+    // Start FortniteLauncher.exe detached (if exists)
     if (fs.existsSync(launcherPath)) {
       const launcher = spawn(launcherPath, [], { detached: true, stdio: "ignore" });
       launcher.unref();
     }
 
-    // Start EAC wrapper suspended
-    if (fs.existsSync(eacPath)) {
-      const eac = spawn(eacPath, [], { detached: true, stdio: "ignore" });
-      eac.unref();
-    }
-
-    // Start the actual game
+    // Start the actual game (no EAC)
     const game = spawn(exePath, args, {
       detached: true,
       stdio: "ignore",

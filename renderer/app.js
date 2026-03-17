@@ -350,6 +350,19 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ===== ANTI-SNIFF: Sanitize any string for display — strip backend IPs =====
+const _ipPattern = (() => {
+  const host = _b.replace(/^https?:\/\//, "");
+  const hostw = _w.replace(/^https?:\/\//, "");
+  const parts = [_b, _w, host, hostw].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(parts.join("|"), "g");
+})();
+
+function sanitizeForDisplay(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(_ipPattern, "***");
+}
+
 function openExternal(url) {
   if (window.starglaze?.openExternal) {
     // Electron: opens in default browser via shell.openExternal
@@ -371,6 +384,25 @@ function getBuildDisplayName(version) {
   if (!version) return "Unknown Build";
   const season = VERSION_MAP[version];
   return season ? `${season} (${version})` : `Build ${version}`;
+}
+
+function getSeasonNumber(version) {
+  if (!version) return null;
+  const major = parseInt(version.split(".")[0]);
+  return isNaN(major) ? null : major;
+}
+
+function getSeasonCSSClass(version) {
+  const s = getSeasonNumber(version);
+  if (s === null) return "season-unknown";
+  if (s >= 1 && s <= 3) return "season-1-3";
+  if (s === 4) return "season-4";
+  if (s === 5 || s === 6) return "season-5-6";
+  if (s === 7) return "season-7";
+  if (s === 8) return "season-8";
+  if (s === 9) return "season-9";
+  if (s === 10) return "season-x";
+  return "season-unknown";
 }
 
 // ===== Page Renderers =====
@@ -547,17 +579,54 @@ async function loadHomeShopPreview() {
     return;
   }
 
-  const entries = [];
+  // Prefer featured (weekly) items for preview
+  let entries = [];
   for (const sf of catalog.storefronts) {
-    if (sf.catalogEntries) {
-      for (const entry of sf.catalogEntries) {
-        entries.push(entry);
+    if (sf.name === "BRWeeklyStorefront" && sf.catalogEntries) {
+      entries = sf.catalogEntries;
+      break;
+    }
+  }
+  if (entries.length === 0) {
+    for (const sf of catalog.storefronts) {
+      if (sf.catalogEntries) {
+        for (const entry of sf.catalogEntries) entries.push(entry);
       }
     }
   }
 
   const first4 = entries.slice(0, 4);
-  grid.innerHTML = first4.map((entry) => renderShopCard(entry)).join("");
+  grid.innerHTML = first4.map((entry, i) => {
+    const prices = entry.prices || [];
+    const price = prices[0]?.finalPrice ?? "?";
+    return `
+      <div class="shop-card" id="home-shop-card-${i}">
+        <div class="shop-card-img"><div class="shimmer" style="width:100%;height:100%"></div></div>
+        <div class="shop-card-body">
+          <h4>${escapeHtml(entry.devName || "Item")}</h4>
+          <div class="shop-price"><span style="color:var(--purple-light);font-weight:700">V</span> ${typeof price === "number" ? price.toLocaleString() : price}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Fetch icons
+  for (let i = 0; i < first4.length; i++) {
+    const grants = first4[i].itemGrants || [];
+    const tid = grants[0]?.templateId || "";
+    if (!tid) continue;
+    const info = await fetchShopIcon(tid);
+    const card = document.getElementById(`home-shop-card-${i}`);
+    if (!card) continue;
+    if (info?.icon) {
+      const imgWrap = card.querySelector(".shop-card-img");
+      if (imgWrap) imgWrap.innerHTML = `<img src="${info.icon}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+    }
+    if (info?.name) {
+      const h4 = card.querySelector("h4");
+      if (h4) h4.textContent = info.name;
+    }
+  }
 }
 
 // ===== BUILDS PAGE =====
@@ -577,39 +646,41 @@ function renderBuilds() {
         </button>
       </div>
 
-      <div class="builds-list" id="builds-list">
-        ${builds.length === 0 ? `
-          <div class="builds-empty">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
-            <h3>No builds imported</h3>
-            <p>Click "Import Build" to add a Fortnite build folder</p>
-          </div>
-        ` : builds.map((build) => `
-          <div class="build-card" data-build-id="${escapeHtml(build.id)}">
-            <div class="build-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/></svg>
+      <div class="builds-grid" id="builds-list">
+        ${builds.map((build) => {
+          const seasonNum = getSeasonNumber(build.version);
+          const seasonName = VERSION_MAP[build.version] || "Unknown";
+          const cssClass = getSeasonCSSClass(build.version);
+          const statusClass = build.status || "ready";
+          const statusLabel = statusClass === "ready" ? "Ready" : statusClass === "error" ? "Error" : "Needs Update";
+          return `
+          <div class="build-grid-card ${cssClass}" data-build-id="${escapeHtml(build.id)}">
+            <span class="build-status-badge status-${statusClass}">${statusLabel}</span>
+            <div class="build-grid-art">
+              <span class="build-season-label">${escapeHtml(seasonName)}</span>
+              <span class="build-version-label">${escapeHtml(build.version || "?")}</span>
             </div>
-            <div class="build-info">
-              <h3 class="build-name">${escapeHtml(build.name)}</h3>
-              <p class="build-path">${escapeHtml(build.path)}</p>
-              <div class="build-meta">
-                <span class="build-version">${escapeHtml(build.version || "Unknown")}</span>
-                <span class="build-status status-${build.status || "ready"}">${(build.status || "ready") === "ready" ? "Ready" : build.status === "error" ? "Error" : "Needs Update"}</span>
-                ${build.lastPlayed ? `<span class="build-last-played">Last played: ${new Date(build.lastPlayed).toLocaleDateString()}</span>` : ""}
+            <div class="build-grid-footer">
+              ${build.lastPlayed ? `<span class="build-last-played">Last: ${new Date(build.lastPlayed).toLocaleDateString()}</span>` : `<span class="build-last-played">Never played</span>`}
+              <div class="build-grid-actions">
+                <button class="btn-primary build-launch-btn" data-build-id="${escapeHtml(build.id)}" style="padding:6px 16px;font-size:12px">Launch</button>
+                <button class="build-remove-link build-remove-btn" data-build-id="${escapeHtml(build.id)}">Remove</button>
               </div>
             </div>
-            <div class="build-actions">
-              <button class="btn-primary build-launch-btn" data-build-id="${escapeHtml(build.id)}" style="padding:8px 20px;font-size:13px">Launch</button>
-              <button class="btn-browse btn-danger-small build-remove-btn" data-build-id="${escapeHtml(build.id)}">Remove</button>
-            </div>
           </div>
-        `).join("")}
+        `}).join("")}
+        <div class="build-grid-card build-import-card" id="btn-import-build-card">
+          <div class="build-import-inner">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <span style="color:var(--text-muted);font-size:13px;font-weight:500">Import Build</span>
+          </div>
+        </div>
       </div>
     </div>
   `;
 
-  // Import build button
-  document.getElementById("btn-import-build")?.addEventListener("click", async () => {
+  // Import build buttons
+  const importHandler = async () => {
     if (!window.starglaze) return;
 
     const result = await window.starglaze.importBuild();
@@ -635,7 +706,10 @@ function renderBuilds() {
     config.builds.push(build);
     await persistConfig();
     renderBuilds();
-  });
+  };
+
+  document.getElementById("btn-import-build")?.addEventListener("click", importHandler);
+  document.getElementById("btn-import-build-card")?.addEventListener("click", importHandler);
 
   // Launch buttons
   document.querySelectorAll(".build-launch-btn").forEach((btn) => {
@@ -929,13 +1003,38 @@ function renderLocker() {
 }
 
 // ===== ITEM SHOP PAGE =====
+const shopIconCache = {};
+
+async function fetchShopIcon(templateId) {
+  if (!templateId || !templateId.includes(":")) return null;
+  const itemId = templateId.split(":")[1];
+  if (shopIconCache[itemId]) return shopIconCache[itemId];
+  try {
+    const res = await fetch(`https://fortnite-api.com/v2/cosmetics/br/${encodeURIComponent(itemId)}?language=en`);
+    const data = await res.json();
+    const icon = data?.data?.images?.icon || data?.data?.images?.smallIcon || null;
+    const name = data?.data?.name || null;
+    const rarity = data?.data?.rarity?.value || null;
+    shopIconCache[itemId] = { icon, name, rarity };
+    return shopIconCache[itemId];
+  } catch {
+    shopIconCache[itemId] = { icon: null, name: null, rarity: null };
+    return shopIconCache[itemId];
+  }
+}
+
 function renderShop() {
   content.innerHTML = `
     <div class="page-shop">
       <h1 class="page-title">Item Shop</h1>
       <p class="page-subtitle">Today's featured items</p>
-      <div class="shop-grid" id="shop-grid">
-        ${Array(8).fill('<div class="shimmer" style="height:240px;border-radius:10px"></div>').join("")}
+      <h2 class="section-title" style="margin-bottom:16px">Featured</h2>
+      <div class="shop-grid" id="shop-grid-featured">
+        ${Array(4).fill('<div class="shimmer" style="height:240px;border-radius:10px"></div>').join("")}
+      </div>
+      <h2 class="section-title" style="margin:32px 0 16px">Daily</h2>
+      <div class="shop-grid" id="shop-grid-daily">
+        ${Array(4).fill('<div class="shimmer" style="height:240px;border-radius:10px"></div>').join("")}
       </div>
     </div>
   `;
@@ -944,62 +1043,111 @@ function renderShop() {
 }
 
 async function loadShop() {
-  const grid = document.getElementById("shop-grid");
-  if (!grid) return;
+  const featuredGrid = document.getElementById("shop-grid-featured");
+  const dailyGrid = document.getElementById("shop-grid-daily");
+  if (!featuredGrid || !dailyGrid) return;
 
   const catalog = await API.fetch("/fortnite/api/storefront/v2/catalog");
   if (!catalog || !catalog.storefronts) {
-    grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center">Could not load item shop</p>';
+    featuredGrid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center">Could not load item shop</p>';
+    dailyGrid.innerHTML = "";
     return;
   }
 
-  const entries = [];
+  let featuredEntries = [];
+  let dailyEntries = [];
+
   for (const sf of catalog.storefronts) {
-    if (sf.catalogEntries) {
-      for (const entry of sf.catalogEntries) {
-        entries.push(entry);
+    if (sf.name === "BRWeeklyStorefront" && sf.catalogEntries) {
+      featuredEntries = sf.catalogEntries;
+    } else if (sf.name === "BRDailyStorefront" && sf.catalogEntries) {
+      dailyEntries = sf.catalogEntries;
+    }
+  }
+
+  async function renderShopSection(grid, entries) {
+    if (entries.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center">No items</p>';
+      return;
+    }
+
+    // Render placeholder cards first
+    grid.innerHTML = entries.map((entry, i) => {
+      const prices = entry.prices || [];
+      const price = prices[0]?.finalPrice ?? "?";
+      const devName = entry.devName || "Unknown Item";
+      return `
+        <div class="shop-card" id="shop-card-${i}-${grid.id}">
+          <div class="shop-card-img">
+            <div class="shimmer" style="width:100%;height:100%"></div>
+          </div>
+          <div class="shop-card-body">
+            <h4>${escapeHtml(devName)}</h4>
+            <div class="shop-price">
+              <span style="color:var(--purple-light);font-weight:700">V</span>
+              ${typeof price === "number" ? price.toLocaleString() : price}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Fetch icons and update cards
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const grants = entry.itemGrants || [];
+      const firstGrant = grants[0]?.templateId || "";
+      if (!firstGrant) continue;
+
+      const info = await fetchShopIcon(firstGrant);
+      const card = document.getElementById(`shop-card-${i}-${grid.id}`);
+      if (!card) continue;
+
+      const rarityColors = {
+        legendary: "#c97c1b",
+        epic: "#8138C2",
+        rare: "#2f7be3",
+        uncommon: "#60aa3a",
+        common: "#8c8c8c",
+      };
+
+      if (info?.rarity) {
+        const borderColor = rarityColors[info.rarity] || "var(--border-card)";
+        card.style.borderColor = borderColor;
+      }
+
+      if (info?.name) {
+        const h4 = card.querySelector("h4");
+        if (h4) h4.textContent = info.name;
+      }
+
+      if (info?.icon) {
+        const imgWrap = card.querySelector(".shop-card-img");
+        if (imgWrap) imgWrap.innerHTML = `<img src="${info.icon}" alt="" style="width:100%;height:100%;object-fit:cover">`;
       }
     }
   }
 
-  if (entries.length === 0) {
-    grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center">Shop is empty</p>';
-    return;
-  }
-
-  grid.innerHTML = entries.map((entry) => renderShopCard(entry)).join("");
+  await Promise.all([
+    renderShopSection(featuredGrid, featuredEntries),
+    renderShopSection(dailyGrid, dailyEntries),
+  ]);
 }
 
 function renderShopCard(entry) {
-  const title = entry.title || entry.devName || "Unknown Item";
-  const desc = entry.shortDescription || entry.description || "";
+  const title = entry.devName || "Unknown Item";
   const prices = entry.prices || [];
-  const price = prices[0]?.finalPrice ?? entry.finalPrice ?? "?";
-  const grants = entry.itemGrants || [];
-  const firstGrant = grants[0]?.templateId || "";
-  const cosmeticId = firstGrant.includes(":") ? firstGrant.split(":")[1] : "";
-
-  const rarityColors = {
-    "EFortRarity::Legendary": "#c97c1b",
-    "EFortRarity::Epic": "#8138C2",
-    "EFortRarity::Rare": "#2f7be3",
-    "EFortRarity::Uncommon": "#60aa3a",
-    "EFortRarity::Common": "#8c8c8c",
-  };
-  const rarity = entry.rarity || "";
-  const borderColor = rarityColors[rarity] || "var(--border-card)";
-
+  const price = prices[0]?.finalPrice ?? "?";
   return `
-    <div class="shop-card" style="border-color:${borderColor}">
-      <div class="shop-card-img" data-cosm-id="${escapeHtml(cosmeticId)}">
+    <div class="shop-card">
+      <div class="shop-card-img">
         <div class="shimmer" style="width:100%;height:100%"></div>
       </div>
       <div class="shop-card-body">
         <h4>${escapeHtml(title)}</h4>
-        <p>${escapeHtml(desc)}</p>
         <div class="shop-price">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          ${typeof price === "number" ? price.toLocaleString() : price} V-Bucks
+          <span style="color:var(--purple-light);font-weight:700">V</span>
+          ${typeof price === "number" ? price.toLocaleString() : price}
         </div>
       </div>
     </div>
@@ -1023,6 +1171,8 @@ function renderLeaderboard() {
     </div>
   `;
 
+  const HIDDEN_ACCOUNTS = []; // Add accountIds/usernames to exclude here
+
   let activePlaylist = "solo";
 
   async function loadLeaderboard(playlist) {
@@ -1032,11 +1182,27 @@ function renderLeaderboard() {
 
     let data;
     try {
-      const res = await fetch(API.websiteUrl + `/api/website/leaderboard?playlist=${playlist}&type=placetop1&limit=50`);
+      const res = await fetch(API._w + `/api/website/leaderboard?playlist=${playlist}&type=placetop1&limit=50`);
       if (res.ok) data = await res.json();
     } catch {}
 
     if (!data || !Array.isArray(data) || data.length === 0) {
+      wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px">No leaderboard data available</p>';
+      return;
+    }
+
+    // Filter out host/moderator accounts
+    data = data.filter((entry) => {
+      const name = (entry.username || "").toLowerCase();
+      if (name.includes("server") || name.includes("host")) return false;
+      if (HIDDEN_ACCOUNTS.includes(entry.accountId) || HIDDEN_ACCOUNTS.includes(entry.username)) return false;
+      return true;
+    });
+
+    // Re-rank after filtering
+    data.forEach((entry, i) => { entry.rank = i + 1; });
+
+    if (data.length === 0) {
       wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px">No leaderboard data available</p>';
       return;
     }
@@ -1304,8 +1470,6 @@ async function checkServerStatus() {
 
 // ===== SETTINGS PAGE =====
 function renderSettings() {
-  const showAdvanced = config.settings?.showAdvanced || false;
-
   content.innerHTML = `
     <div class="page-settings">
       <h1 class="page-title">Settings</h1>
@@ -1314,27 +1478,12 @@ function renderSettings() {
       <div class="settings-section">
         <h3>Backend</h3>
         <div class="setting-row">
-          <span class="setting-label">Backend Status</span>
+          <span class="setting-label">Backend</span>
           <span class="setting-value" id="settings-backend-status">Checking...</span>
         </div>
         <div class="setting-row">
-          <span class="setting-label">Website Status</span>
+          <span class="setting-label">Website</span>
           <span class="setting-value" id="settings-website-status">Checking...</span>
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">Show Advanced</span>
-          <label class="mod-toggle">
-            <input type="checkbox" id="toggle-advanced" ${showAdvanced ? "checked" : ""}>
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="setting-row" id="advanced-url-row" style="display:${showAdvanced ? "flex" : "none"}">
-          <span class="setting-label">Backend URL</span>
-          <span class="setting-value" style="font-family:monospace;font-size:12px">${escapeHtml(API.baseUrl)}</span>
-        </div>
-        <div class="setting-row" id="advanced-website-row" style="display:${showAdvanced ? "flex" : "none"}">
-          <span class="setting-label">Website URL</span>
-          <span class="setting-value" style="font-family:monospace;font-size:12px">${escapeHtml(API.websiteUrl)}</span>
         </div>
       </div>
 
@@ -1378,7 +1527,7 @@ function renderSettings() {
         </div>
         <div class="setting-row">
           <span class="setting-label">Backend</span>
-          <span class="setting-value">${showAdvanced ? escapeHtml(API.baseUrl) : "Connected"}</span>
+          <span class="setting-value" id="settings-about-backend">Checking...</span>
         </div>
       </div>
     </div>
@@ -1387,50 +1536,36 @@ function renderSettings() {
   // Check backend status
   (async () => {
     const statusEl = document.getElementById("settings-backend-status");
-    if (!statusEl) return;
+    const aboutEl = document.getElementById("settings-about-backend");
     try {
       const res = await fetch(API._b + "/lightswitch/api/service/Fortnite/status");
       if (res.ok) {
-        statusEl.textContent = "Connected";
-        statusEl.style.color = "var(--green-online)";
+        if (statusEl) { statusEl.textContent = "Connected \u2713"; statusEl.style.color = "var(--green-online)"; }
+        if (aboutEl) { aboutEl.textContent = "Connected \u2713"; aboutEl.style.color = "var(--green-online)"; }
       } else {
-        statusEl.textContent = "Disconnected";
-        statusEl.style.color = "var(--red-danger)";
+        if (statusEl) { statusEl.textContent = "Offline \u2717"; statusEl.style.color = "var(--red-danger)"; }
+        if (aboutEl) { aboutEl.textContent = "Offline \u2717"; aboutEl.style.color = "var(--red-danger)"; }
       }
     } catch {
-      statusEl.textContent = "Disconnected";
-      statusEl.style.color = "var(--red-danger)";
+      if (statusEl) { statusEl.textContent = "Offline \u2717"; statusEl.style.color = "var(--red-danger)"; }
+      if (aboutEl) { aboutEl.textContent = "Offline \u2717"; aboutEl.style.color = "var(--red-danger)"; }
     }
   })();
 
   // Check website status
   (async () => {
     const statusEl = document.getElementById("settings-website-status");
-    if (!statusEl) return;
     try {
       const res = await fetch(API._w + "/");
       if (res.ok) {
-        statusEl.textContent = "Connected";
-        statusEl.style.color = "var(--green-online)";
+        if (statusEl) { statusEl.textContent = "Connected \u2713"; statusEl.style.color = "var(--green-online)"; }
       } else {
-        statusEl.textContent = "Disconnected";
-        statusEl.style.color = "var(--red-danger)";
+        if (statusEl) { statusEl.textContent = "Offline \u2717"; statusEl.style.color = "var(--red-danger)"; }
       }
     } catch {
-      statusEl.textContent = "Disconnected";
-      statusEl.style.color = "var(--red-danger)";
+      if (statusEl) { statusEl.textContent = "Offline \u2717"; statusEl.style.color = "var(--red-danger)"; }
     }
   })();
-
-  // Show Advanced toggle
-  document.getElementById("toggle-advanced")?.addEventListener("change", async (e) => {
-    const show = e.target.checked;
-    if (!config.settings) config.settings = {};
-    config.settings.showAdvanced = show;
-    await persistConfig();
-    document.getElementById("advanced-url-row").style.display = show ? "flex" : "none";
-    document.getElementById("advanced-website-row").style.display = show ? "flex" : "none";
-  });
 
   document.getElementById("btn-open-register")?.addEventListener("click", () => {
     openExternal(API.websiteUrl + "/login");

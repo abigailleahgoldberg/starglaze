@@ -832,7 +832,7 @@ function renderPlay() {
       // This lets the game use -AUTH_TYPE=exchangecode which is correct
       let exchangeCode = null;
       try {
-        const exchRes = await fetch(API._b + "/account/api/oauth/exchange", {
+        const exchRes = await fetch(API._b + "/launcher/exchange", {
           headers: { "Authorization": `bearer eg1~${config.accessToken}` }
         });
         const exchData = await exchRes.json();

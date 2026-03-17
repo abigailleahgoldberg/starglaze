@@ -181,15 +181,14 @@ ipcMain.handle("remove-build", (_, buildId) => {
 
 // ===== LAUNCH GAME =====
 
-ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId }) => {
+ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exchangeCode }) => {
   const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
-  const launcherPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteLauncher.exe");
 
   if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
 
   const args = [
-    `-AUTH_LOGIN=${accountId}@starglaze`,
-    `-AUTH_PASSWORD=${accessToken}`,
+    exchangeCode ? "-AUTH_LOGIN=unused" : `-AUTH_LOGIN=${accountId}@starglaze`,
+    `-AUTH_PASSWORD=${exchangeCode || accessToken}`,
     `-AUTH_TYPE=epic`,
     `-epicapp=Fortnite`,
     `-epicenv=Prod`,
@@ -204,13 +203,7 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId }) =
   ];
 
   try {
-    // Start FortniteLauncher.exe detached (if exists)
-    if (fs.existsSync(launcherPath)) {
-      const launcher = spawn(launcherPath, [], { detached: true, stdio: "ignore" });
-      launcher.unref();
-    }
-
-    // Start the actual game (no EAC)
+    // Launch game directly - NO FortniteLauncher (causes EAC), NO EAC exe
     const game = spawn(exePath, args, {
       detached: true,
       stdio: "ignore",

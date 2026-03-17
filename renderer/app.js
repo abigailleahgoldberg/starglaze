@@ -828,10 +828,22 @@ function renderPlay() {
     btn.disabled = true;
 
     if (window.starglaze) {
+      // Get a fresh exchange code from Better-Reload before launching
+      // This lets the game use -AUTH_TYPE=exchangecode which is correct
+      let exchangeCode = null;
+      try {
+        const exchRes = await fetch(API._b + "/account/api/oauth/exchange", {
+          headers: { "Authorization": `bearer eg1~${config.accessToken}` }
+        });
+        const exchData = await exchRes.json();
+        if (exchData.code) exchangeCode = exchData.code;
+      } catch {}
+
       const result = await window.starglaze.launchGame({
         buildPath: build.path,
         accessToken: config.accessToken,
         accountId: config.accountId,
+        exchangeCode: exchangeCode,
       });
 
       if (!result.success) {

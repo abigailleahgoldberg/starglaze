@@ -203,13 +203,59 @@ ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exc
   ];
 
   try {
-    // Launch game directly - NO FortniteLauncher (causes EAC), NO EAC exe
+    // Launch game — NO FortniteLauncher (triggers EAC), NO EAC exe
     const game = spawn(exePath, args, {
-      detached: true,
+      detached: false, // keep handle so we can get PID for injection
       stdio: "ignore",
       cwd: path.dirname(exePath),
     });
+
+    const gamePid = game.pid;
     game.unref();
+
+    // Inject patchers after game initializes (5 second delay)
+    if (gamePid) {
+      const patcherDir = path.join(__dirname, "patchers");
+      const tellurium = path.join(patcherDir, "Tellurium.dll").replace(/\\/g, "\\\\");
+      const memory = path.join(patcherDir, "Memory.dll").replace(/\\/g, "\\\\");
+      const erbium = path.join(patcherDir, "Erbium.dll").replace(/\\/g, "\\\\");
+
+      setTimeout(() => {
+        // PowerShell DLL injector — injects Tellurium (auth redirect), Memory, Erbium
+        const ps = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Injector {
+    [DllImport("kernel32.dll")] public static extern IntPtr OpenProcess(int a, bool b, int c);
+    [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr h, string p);
+    [DllImport("kernel32.dll")] public static extern IntPtr GetModuleHandle(string m);
+    [DllImport("kernel32.dll")] public static extern IntPtr VirtualAllocEx(IntPtr h, IntPtr a, uint s, uint t, uint p);
+    [DllImport("kernel32.dll")] public static extern bool WriteProcessMemory(IntPtr h, IntPtr a, byte[] b, uint s, out int w);
+    [DllImport("kernel32.dll")] public static extern IntPtr CreateRemoteThread(IntPtr h, IntPtr a, uint s, IntPtr f, IntPtr p, uint c, IntPtr i);
+    [DllImport("kernel32.dll")] public static extern bool CloseHandle(IntPtr h);
+}
+"@
+function Inject([int]$pid,[string]$dll){
+  $h=[Injector]::OpenProcess(0x1F0FFF,$false,$pid)
+  $b=[System.Text.Encoding]::Unicode.GetBytes($dll+[char]0)
+  $a=[Injector]::VirtualAllocEx($h,[IntPtr]::Zero,$b.Length,0x3000,0x40)
+  $w=0;[Injector]::WriteProcessMemory($h,$a,$b,$b.Length,[ref]$w)|Out-Null
+  $f=[Injector]::GetProcAddress([Injector]::GetModuleHandle("kernel32.dll"),"LoadLibraryW")
+  [Injector]::CreateRemoteThread($h,[IntPtr]::Zero,0,$f,$a,0,[IntPtr]::Zero)|Out-Null
+  [Injector]::CloseHandle($h)|Out-Null
+}
+Inject ${gamePid} "${tellurium}"
+Start-Sleep -Milliseconds 500
+Inject ${gamePid} "${memory}"
+Start-Sleep -Milliseconds 500
+Inject ${gamePid} "${erbium}"
+`;
+        spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], {
+          detached: true, stdio: "ignore"
+        }).unref();
+      }, 5000);
+    }
 
     // Update last played on the build
     const config = loadConfig();

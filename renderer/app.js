@@ -1,7 +1,8 @@
 /* ===== Star Glaze Launcher — App Logic ===== */
 
-// ===== ANTI-SNIFF: Obfuscated backend URL =====
-const _b = atob("aHR0cDovLzI2LjI1Mi4xMjMuMjQzOjM1NTE="); // decoded at runtime
+// ===== ANTI-SNIFF: Obfuscated backend + website URLs =====
+const _b = atob("aHR0cDovLzI2LjI1Mi4xMjMuMjQzOjM1NTE="); // backend :3551
+const _w = atob("aHR0cDovLzI2LjI1Mi4xMjMuMjQzOjgwODA="); // website :8080
 
 const content = document.getElementById("content");
 let currentPage = "login";
@@ -14,6 +15,7 @@ let config = {
   displayName: null,
   builds: [],
   settings: {},
+  backendUrl: null,
 };
 
 const CLIENT_CREDENTIALS = "ec684b8c687f479fadea3cb2ad83f5c6:e1f31c211f28413186262d37a13fc84d";
@@ -23,16 +25,20 @@ const CLIENT_CREDENTIALS_B64 = btoa(CLIENT_CREDENTIALS);
 // ===== ANTI-SNIFF: Override console methods to filter backend IP =====
 (function() {
   const _ip = _b;
+  const _ipw = _w;
   const _host = _ip.replace(/^https?:\/\//, "");
+  const _hostw = _ipw.replace(/^https?:\/\//, "");
   const origLog = console.log;
   const origWarn = console.warn;
   const origError = console.error;
 
   function sanitize(args) {
     return args.map((a) => {
-      if (typeof a === "string" && (a.includes(_host) || a.includes(_ip))) {
+      if (typeof a === "string" && (a.includes(_host) || a.includes(_ip) || a.includes(_hostw) || a.includes(_ipw))) {
         return a.replace(new RegExp(_host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****")
-               .replace(new RegExp(_ip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****");
+               .replace(new RegExp(_ip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****")
+               .replace(new RegExp(_hostw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****")
+               .replace(new RegExp(_ipw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***.***.***:****");
       }
       return a;
     });
@@ -57,16 +63,21 @@ document.addEventListener("keydown", (e) => {
 
 // ===== API Helper =====
 const API = {
-  get baseUrl() { return _b; },
-  get token() { return config.accessToken; },
-  get accountId() { return config.accountId; },
+  _b,
+  _w,
+  token: null,
+  accountId: null,
+  displayName: null,
+
+  get baseUrl() { return config.backendUrl || this._b; },
+  get websiteUrl() { return this._w; },
   get obfuscatedUrl() { return "***.***.***:****"; },
 
   async fetch(path, opts = {}) {
-    const headers = { ...opts.headers };
-    if (this.token) headers["Authorization"] = `bearer eg1~${this.token}`;
+    const headers = { "Content-Type": "application/json", ...opts.headers };
+    if (config.accessToken) headers["Authorization"] = `bearer eg1~${config.accessToken}`;
     try {
-      const res = await fetch(this.baseUrl + path, { ...opts, headers });
+      const res = await fetch(this._b + path, { ...opts, headers });
       if (!res.ok && res.status === 401) {
         handleLogout();
         return null;
@@ -141,13 +152,17 @@ const VERSION_MAP = {
 
 // ===== Auth =====
 async function doLogin(email, password) {
-  const body = `grant_type=password&username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+  const body = new URLSearchParams({
+    grant_type: "password",
+    username: email,
+    password: password,
+  });
   try {
-    const res = await fetch(API.baseUrl + "/account/api/oauth/token", {
+    const res = await fetch(API._b + "/account/api/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `basic ${CLIENT_CREDENTIALS_B64}`,
+        "Authorization": "Basic " + btoa(CLIENT_CREDENTIALS),
       },
       body,
     });
@@ -338,9 +353,18 @@ function escapeHtml(str) {
 
 function openExternal(url) {
   if (window.starglaze?.openExternal) {
+    // Electron: opens in default browser via shell.openExternal
     window.starglaze.openExternal(url);
   } else {
-    window.open(url, "_blank");
+    // Web preview fallback — show clickable link since browser blocks direct HTTP nav
+    const existing = document.getElementById("_ext_link_overlay");
+    if (existing) existing.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "_ext_link_overlay";
+    overlay.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E1E28;border:1px solid #8B7BB8;border-radius:10px;padding:14px 20px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5)";
+    overlay.innerHTML = `<span style="font-size:13px;color:#A0A0AA">Open in browser:</span><a href="${url}" target="_blank" style="color:#8B7BB8;font-size:13px;font-weight:600;word-break:break-all">${url}</a><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#6B6B78;cursor:pointer;font-size:16px;padding:0 4px">✕</button>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay?.remove(), 15000);
   }
 }
 
@@ -374,10 +398,20 @@ function renderLogin() {
     <div class="page-login">
       <img src="./logo.png" class="login-logo" alt="Star Glaze">
       <h1 class="login-title"><span class="star">Star </span><span class="glaze">Glaze</span></h1>
-      <p class="login-subtitle">Sign in with Discord to continue</p>
+      <p class="login-subtitle">Welcome to Star Glaze</p>
 
-      <!-- Email/password login (disabled — OAuth enabled) -->
-      <form class="login-form" id="login-form" style="display:none">
+      <button class="login-register-btn" id="btn-register" style="display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:360px;padding:14px 28px;background:#5865F2;color:white;border:none;border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(88,101,242,0.3);">
+        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="white"><path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53.05s5-12.68 11.43-12.68S53.89 46 53.88 53.05 48.84 65.69 42.45 65.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53.05s5-12.68 11.44-12.68S96.23 46 96.12 53.05 91.08 65.69 84.69 65.69Z"/></svg>
+        Create Account
+      </button>
+
+      <div class="login-divider" style="display:flex;align-items:center;gap:12px;width:100%;max-width:360px;margin:20px 0">
+        <div style="flex:1;height:1px;background:var(--border-card)"></div>
+        <span style="color:var(--text-muted);font-size:13px;white-space:nowrap">Already have an account?</span>
+        <div style="flex:1;height:1px;background:var(--border-card)"></div>
+      </div>
+
+      <form class="login-form" id="login-form">
         <div class="login-field">
           <label>Email</label>
           <input type="email" id="login-email" placeholder="your@email.com" required autocomplete="email">
@@ -390,12 +424,7 @@ function renderLogin() {
         <button type="submit" class="login-btn" id="login-btn">LOGIN</button>
       </form>
 
-      <button class="login-register-btn" id="btn-register" style="display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:360px;padding:14px 28px;background:#5865F2;color:white;border:none;border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);box-shadow:0 4px 20px rgba(88,101,242,0.3);">
-        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="white"><path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53.05s5-12.68 11.43-12.68S53.89 46 53.88 53.05 48.84 65.69 42.45 65.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53.05s5-12.68 11.44-12.68S96.23 46 96.12 53.05 91.08 65.69 84.69 65.69Z"/></svg>
-        Login with Discord
-      </button>
-
-      <p class="login-hint">Sign in through Discord to create or access your account.</p>
+      <p class="login-hint">Create your account via Discord, then sign in with your email and password.</p>
     </div>
   `;
 
@@ -422,7 +451,7 @@ function renderLogin() {
   });
 
   document.getElementById("btn-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/login");
+    openExternal(API.websiteUrl + "/login");
   });
 }
 
@@ -1008,10 +1037,13 @@ function renderLeaderboard() {
     if (!wrap) return;
     wrap.innerHTML = '<div class="shimmer" style="height:400px;border-radius:10px"></div>';
 
-    const lbName = `br_placetop1_keyboardmouse_m0_playlist_default${playlist}`;
-    const data = await API.fetch(`/fortnite/api/statsv2/leaderboards/${lbName}?maxSize=50`);
+    let data;
+    try {
+      const res = await fetch(API.websiteUrl + `/api/website/leaderboard?playlist=${playlist}&type=placetop1&limit=50`);
+      if (res.ok) data = await res.json();
+    } catch {}
 
-    if (!data || !data.entries || data.entries.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px">No leaderboard data available</p>';
       return;
     }
@@ -1026,12 +1058,12 @@ function renderLeaderboard() {
           </tr>
         </thead>
         <tbody>
-          ${data.entries.map((entry, i) => {
-            const isMe = entry.account === config.accountId;
+          ${data.map((entry) => {
+            const isMe = entry.accountId === config.accountId;
             return `
               <tr class="${isMe ? "lb-highlight" : ""}">
-                <td class="lb-rank">${i + 1}</td>
-                <td class="lb-name">${escapeHtml(entry.displayName || entry.account)}</td>
+                <td class="lb-rank">${entry.rank}</td>
+                <td class="lb-name">${escapeHtml(entry.username || entry.accountId)}</td>
                 <td class="lb-value">${entry.value}</td>
               </tr>
             `;
@@ -1185,15 +1217,19 @@ function renderServer() {
       <div class="server-info-grid" id="server-cards">
         <div class="server-info-card">
           <div class="info-value shimmer-text" id="srv-status">Checking...</div>
-          <div class="info-label">Status</div>
+          <div class="info-label">Backend Status</div>
         </div>
         <div class="server-info-card">
           <div class="info-value" id="srv-ping">—</div>
-          <div class="info-label">Response Time</div>
+          <div class="info-label">Backend Ping</div>
         </div>
         <div class="server-info-card">
-          <div class="info-value" id="srv-url" style="font-size:14px;word-break:break-all">${API.obfuscatedUrl}</div>
-          <div class="info-label">Backend</div>
+          <div class="info-value shimmer-text" id="srv-website-status">Checking...</div>
+          <div class="info-label">Website Status</div>
+        </div>
+        <div class="server-info-card">
+          <div class="info-value" id="srv-website-ping">—</div>
+          <div class="info-label">Website Ping</div>
         </div>
       </div>
 
@@ -1212,11 +1248,14 @@ function renderServer() {
 async function checkServerStatus() {
   const statusEl = document.getElementById("srv-status");
   const pingEl = document.getElementById("srv-ping");
+  const wsStatusEl = document.getElementById("srv-website-status");
+  const wsPingEl = document.getElementById("srv-website-ping");
   const detailsEl = document.getElementById("srv-service-info");
 
+  // Check backend (port 3551)
   try {
     const start = Date.now();
-    const res = await fetch(API.baseUrl + "/lightswitch/api/service/Fortnite/status");
+    const res = await fetch(API._b + "/lightswitch/api/service/Fortnite/status");
     const ms = Date.now() - start;
 
     if (statusEl) {
@@ -1232,8 +1271,7 @@ async function checkServerStatus() {
         <div class="log-entry"><div class="log-dot green"></div><span class="log-msg">Service: ${escapeHtml(data.serviceInstanceId || "fortnite")}</span></div>
         <div class="log-entry"><div class="log-dot green"></div><span class="log-msg">Status: ${escapeHtml(data.status || "UP")}</span></div>
         <div class="log-entry"><div class="log-dot green"></div><span class="log-msg">Message: ${escapeHtml(data.message || "Fortnite is online")}</span></div>
-        <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Response time: ${ms}ms</span></div>
-        <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Backend: Connected</span></div>
+        <div class="log-entry"><div class="log-dot purple"></div><span class="log-msg">Backend response: ${ms}ms</span></div>
       `;
     }
   } catch (err) {
@@ -1249,6 +1287,26 @@ async function checkServerStatus() {
       `;
     }
   }
+
+  // Check website (port 8080)
+  try {
+    const start = Date.now();
+    const res = await fetch(API._w + "/");
+    const ms = Date.now() - start;
+
+    if (wsStatusEl) {
+      wsStatusEl.textContent = "Online";
+      wsStatusEl.style.color = "var(--green-online)";
+      wsStatusEl.closest(".server-info-card")?.classList.add("online");
+    }
+    if (wsPingEl) wsPingEl.textContent = `${ms}ms`;
+  } catch {
+    if (wsStatusEl) {
+      wsStatusEl.textContent = "Offline";
+      wsStatusEl.style.color = "var(--red-danger)";
+    }
+    if (wsPingEl) wsPingEl.textContent = "—";
+  }
 }
 
 // ===== SETTINGS PAGE =====
@@ -1263,8 +1321,12 @@ function renderSettings() {
       <div class="settings-section">
         <h3>Backend</h3>
         <div class="setting-row">
-          <span class="setting-label">Connection Status</span>
+          <span class="setting-label">Backend Status</span>
           <span class="setting-value" id="settings-backend-status">Checking...</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Website Status</span>
+          <span class="setting-value" id="settings-website-status">Checking...</span>
         </div>
         <div class="setting-row">
           <span class="setting-label">Show Advanced</span>
@@ -1276,6 +1338,10 @@ function renderSettings() {
         <div class="setting-row" id="advanced-url-row" style="display:${showAdvanced ? "flex" : "none"}">
           <span class="setting-label">Backend URL</span>
           <span class="setting-value" style="font-family:monospace;font-size:12px">${escapeHtml(API.baseUrl)}</span>
+        </div>
+        <div class="setting-row" id="advanced-website-row" style="display:${showAdvanced ? "flex" : "none"}">
+          <span class="setting-label">Website URL</span>
+          <span class="setting-value" style="font-family:monospace;font-size:12px">${escapeHtml(API.websiteUrl)}</span>
         </div>
       </div>
 
@@ -1330,7 +1396,26 @@ function renderSettings() {
     const statusEl = document.getElementById("settings-backend-status");
     if (!statusEl) return;
     try {
-      const res = await fetch(API.baseUrl + "/lightswitch/api/service/Fortnite/status");
+      const res = await fetch(API._b + "/lightswitch/api/service/Fortnite/status");
+      if (res.ok) {
+        statusEl.textContent = "Connected";
+        statusEl.style.color = "var(--green-online)";
+      } else {
+        statusEl.textContent = "Disconnected";
+        statusEl.style.color = "var(--red-danger)";
+      }
+    } catch {
+      statusEl.textContent = "Disconnected";
+      statusEl.style.color = "var(--red-danger)";
+    }
+  })();
+
+  // Check website status
+  (async () => {
+    const statusEl = document.getElementById("settings-website-status");
+    if (!statusEl) return;
+    try {
+      const res = await fetch(API._w + "/");
       if (res.ok) {
         statusEl.textContent = "Connected";
         statusEl.style.color = "var(--green-online)";
@@ -1351,10 +1436,11 @@ function renderSettings() {
     config.settings.showAdvanced = show;
     await persistConfig();
     document.getElementById("advanced-url-row").style.display = show ? "flex" : "none";
+    document.getElementById("advanced-website-row").style.display = show ? "flex" : "none";
   });
 
   document.getElementById("btn-open-register")?.addEventListener("click", () => {
-    openExternal(API.baseUrl + "/login");
+    openExternal(API.websiteUrl + "/login");
   });
 
   document.getElementById("btn-logout")?.addEventListener("click", () => {

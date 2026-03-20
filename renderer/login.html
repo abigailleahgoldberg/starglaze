@@ -2,192 +2,195 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Star Glaze</title>
+<title>StarGlaze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0d0d0f;
-    --surface: #141418;
-    --border: #1e1e28;
-    --accent: #7c5cbf;
-    --accent2: #9b7de0;
-    --text: #eeeef4;
-    --sub: #6e6e8a;
-    --sub2: #3a3a52;
-    --red: #e05c5c;
+    --bg:      #0D0E17;
+    --surface: #171929;
+    --border:  #2A2D42;
+    --accent:  #D946EF;
+    --purple:  #7C3AED;
+    --text:    #FFFFFF;
+    --sub:     #9CA3AF;
+    --sub2:    #4B5261;
+    --red:     #EF4444;
   }
   html, body {
-    width: 440px; height: 540px;
-    background: transparent;
-    font-family: -apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif;
+    width: 440px; height: 560px;
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     user-select: none;
     overflow: hidden;
-  }
-
-  .win {
-    width: 440px; height: 540px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* drag bar */
-  .drag { height: 36px; -webkit-app-region: drag; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; }
-  .close-btn {
-    width: 22px; height: 22px; border-radius: 50%; border: none;
-    background: transparent; color: var(--sub2); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    -webkit-app-region: no-drag; transition: background 0.12s, color 0.12s;
   }
-  .close-btn:hover { background: #3a1818; color: var(--red); }
 
-  /* logo area */
-  .logo-area {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 8px 0 28px;
+  /* ── Floating window controls ── */
+  .wc {
+    position: fixed; top: 16px; right: 16px;
+    display: flex; align-items: center; gap: 20px; z-index: 99;
+    -webkit-app-region: no-drag;
   }
-  .logo-area img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 14px; }
-  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
-  .brand span { color: var(--accent2); }
-  .tagline { font-size: 12px; color: var(--sub); margin-top: 4px; font-weight: 500; }
+  .wc-btn {
+    background: none; border: none; cursor: pointer;
+    color: #A0A0B0; font-size: 14px; line-height: 1;
+    padding: 4px; transition: color 0.12s; display: flex; align-items: center;
+  }
+  .wc-btn:hover { color: #ffffff; }
+  .wc-btn.x:hover { color: var(--red); }
+  .drag-area {
+    position: fixed; top: 0; left: 0; right: 0; height: 50px;
+    -webkit-app-region: drag; z-index: 0;
+  }
 
-  /* form */
-  .form { padding: 0 40px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  /* ── Login card ── */
+  .card {
+    width: 360px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 40px 36px 32px;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+    position: relative; z-index: 1;
+  }
+
+  /* logo */
+  .logo-wrap { margin-bottom: 20px; }
+  .logo-wrap svg { display: block; }
+
+  .brand { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
+  .sub   { font-size: 13px; color: var(--sub); font-weight: 400; margin-bottom: 32px; text-align: center; }
+
+  .fields { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-bottom: 8px; }
 
   .field { display: flex; flex-direction: column; gap: 6px; }
-  .field label { font-size: 11px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: 0.8px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--sub); letter-spacing: 0.3px; }
   .field input {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
-    font-size: 13px; font-weight: 500; color: var(--text);
+    background: #0D0E17; border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; font-weight: 500; color: var(--text);
     outline: none; transition: border-color 0.15s;
-    font-family: inherit;
+    font-family: inherit; width: 100%;
   }
-  .field input:focus { border-color: var(--accent); }
+  .field input:focus { border-color: var(--purple); }
   .field input::placeholder { color: var(--sub2); }
 
   .err {
-    background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3);
-    border-radius: 7px; padding: 10px 14px;
-    font-size: 12px; font-weight: 600; color: var(--red);
-    display: none;
+    width: 100%; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 4px;
+    font-size: 12px; font-weight: 600; color: var(--red); display: none;
   }
   .err.show { display: block; }
 
   .submit {
-    margin-top: 4px; padding: 13px;
-    background: var(--accent); border: none; border-radius: 8px;
-    color: white; font-size: 13px; font-weight: 800;
-    letter-spacing: 0.3px; cursor: pointer; transition: background 0.15s;
-    font-family: inherit;
+    width: 100%; margin-top: 20px; padding: 14px;
+    background: linear-gradient(135deg, #7C3AED, #9333EA);
+    border: none; border-radius: 10px;
+    color: white; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .submit:hover { background: var(--accent2); }
-  .submit:disabled { background: var(--sub2); cursor: not-allowed; }
+  .submit:hover { opacity: 0.9; }
+  .submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .footer-links {
-    display: flex; justify-content: center; gap: 18px;
-    padding: 20px 40px 28px;
+  .links {
+    display: flex; justify-content: center; gap: 24px; margin-top: 20px; width: 100%;
   }
   .link {
-    font-size: 11px; font-weight: 600; color: var(--sub);
-    cursor: pointer; transition: color 0.12s;
+    font-size: 12px; color: var(--sub); font-weight: 500; cursor: pointer;
+    transition: color 0.12s; text-decoration: none;
   }
-  .link:hover { color: var(--accent2); }
+  .link:hover { color: var(--text); }
 
-  /* loading spinner */
+  /* spinner */
   .spin {
-    display: none; width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white; border-radius: 50%;
-    animation: spin 0.7s linear infinite; margin: 0 auto;
+    display: none; width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,0.25); border-top-color: white;
+    border-radius: 50%; animation: spin 0.65s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .submit.loading .spin { display: inline-block; }
   .submit.loading .label { display: none; }
+  .submit.loading .spin { display: block; }
 </style>
 </head>
 <body>
-<div class="win">
-  <div class="drag">
-    <button class="close-btn" onclick="sg.windowClose()">
-      <svg viewBox="0 0 12 12" width="10" height="10"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
+
+<div class="drag-area"></div>
+<div class="wc">
+  <button class="wc-btn" onclick="sg.windowMinimize()">
+    <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
+  </button>
+  <button class="wc-btn x" onclick="sg.windowClose()">
+    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="card">
+  <!-- Phoenix logo -->
+  <div class="logo-wrap">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Stylized star/burst logo -->
+      <circle cx="24" cy="24" r="22" fill="rgba(217,70,239,0.12)"/>
+      <path d="M24 6 L27 18 L38 12 L30 22 L42 24 L30 26 L38 36 L27 30 L24 42 L21 30 L10 36 L18 26 L6 24 L18 22 L10 12 L21 18 Z" fill="#D946EF" opacity="0.9"/>
+      <circle cx="24" cy="24" r="5" fill="#D946EF"/>
+    </svg>
   </div>
 
-  <div class="logo-area">
-    <img src="../assets/logo.png" alt="logo" onerror="this.style.display='none'">
-    <div class="brand">Star<span>Glaze</span></div>
-    <div class="tagline">OG Fortnite Private Server</div>
-  </div>
+  <div class="brand">StarGlaze</div>
+  <div class="sub">OG Fortnite Private Server — Chapter 1, Season 8</div>
 
-  <div class="form">
+  <div class="fields">
     <div class="field">
-      <label>Username</label>
-      <input type="text" id="username" placeholder="Enter your username" autocomplete="off" spellcheck="false">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="off" spellcheck="false">
     </div>
     <div class="field">
       <label>Password</label>
-      <input type="password" id="password" placeholder="Enter your password" autocomplete="off">
+      <input type="password" id="password" placeholder="••••••••••">
     </div>
-
-    <div class="err" id="err"></div>
-
-    <button class="submit" id="submit" onclick="doLogin()">
-      <span class="label">Sign In</span>
-      <div class="spin"></div>
-    </button>
   </div>
 
-  <div class="footer-links">
-    <span class="link" onclick="sg.openExternal('http://26.252.123.243:8080/register')">Create Account</span>
-    <span class="link" onclick="sg.openExternal('http://26.252.123.243:8080/forgot')">Forgot Password</span>
+  <div class="err" id="err"></div>
+
+  <button class="submit" id="submit" onclick="doLogin()">
+    <span class="label">Sign In</span>
+    <div class="spin"></div>
+  </button>
+
+  <div class="links">
+    <a class="link" onclick="sg.openExternal('http://26.252.123.243:8080/register')">Create Account</a>
+    <a class="link" onclick="sg.openExternal('http://26.252.123.243:8080/forgot')">Forgot Password</a>
   </div>
 </div>
 
 <script>
-const usernameEl = document.getElementById("username");
-const passwordEl = document.getElementById("password");
-const submitEl   = document.getElementById("submit");
-const errEl      = document.getElementById("err");
+const emailEl  = document.getElementById("email");
+const passEl   = document.getElementById("password");
+const submitEl = document.getElementById("submit");
+const errEl    = document.getElementById("err");
 
-function showErr(msg) {
-  errEl.textContent = msg;
-  errEl.classList.add("show");
-}
-function clearErr() { errEl.classList.remove("show"); }
+function showErr(msg) { errEl.textContent = msg; errEl.classList.add("show"); }
+function clearErr()   { errEl.classList.remove("show"); }
 
 async function doLogin() {
-  const username = usernameEl.value.trim();
-  const password = passwordEl.value;
-  if (!username || !password) { showErr("Please enter your username and password."); return; }
-
+  const email = emailEl.value.trim();
+  const password = passEl.value;
+  if (!email || !password) { showErr("Please enter your email and password."); return; }
   clearErr();
   submitEl.classList.add("loading");
   submitEl.disabled = true;
-
-  const res = await sg.login({ username, password });
-
+  const res = await sg.login({ username: email, password });
   submitEl.classList.remove("loading");
   submitEl.disabled = false;
-
-  if (res.ok) {
-    await sg.openMain();
-  } else {
-    showErr(res.error || "Login failed. Check your credentials.");
-  }
+  if (res.ok) { await sg.openMain(); }
+  else { showErr(res.error || "Invalid email or password."); }
 }
 
-// Enter key
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") doLogin();
-});
-
-usernameEl.focus();
+document.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+emailEl.focus();
 </script>
 </body>
 </html>

@@ -1,309 +1,275 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const { spawn } = require("child_process");
-const crypto = require("crypto");
+const https = require("https");
+const http = require("http");
+const { execFile } = require("child_process");
 
-let mainWindow;
+// ── Backend (obfuscated) ──────────────────────────────────────────────────────
+const _b = Buffer.from("aHR0cDovLzI2LjI1Mi4xMjMuMjQzOjM1NTE=", "base64").toString();
+function apiUrl(path) { return _b + path; }
 
-// ===== Deep Link Protocol =====
-app.setAsDefaultProtocolClient("starglaze");
-
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-}
-
-function handleDeepLink(url) {
-  if (!url || !url.startsWith("starglaze://")) return;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === "auth") {
-      const code = parsed.searchParams.get("code");
-      const username = parsed.searchParams.get("username");
-      if (code && mainWindow) {
-        mainWindow.webContents.send("oauth-callback", { code, username });
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
-      }
-    }
-  } catch {}
-}
-
-app.on("second-instance", (event, argv) => {
-  const deepLinkArg = argv.find((arg) => arg.startsWith("starglaze://"));
-  if (deepLinkArg) handleDeepLink(deepLinkArg);
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-});
-
-app.on("open-url", (event, url) => {
-  event.preventDefault();
-  handleDeepLink(url);
-});
-
-const CONFIG_PATH = path.join(app.getPath("userData"), "starglaze-config.json");
-
-const DEFAULT_CONFIG = {
-  gamePath: "",
-  lastPlayed: null,
-  accessToken: null,
-  refreshToken: null,
-  accountId: null,
-  displayName: null,
-  builds: [],
-  settings: {},
-};
-
+// ── Config ────────────────────────────────────────────────────────────────────
+const CFG_PATH = path.join(app.getPath("userData"), "config.json");
 function loadConfig() {
-  try {
-    const saved = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
-    return { ...DEFAULT_CONFIG, ...saved };
-  } catch {
-    return { ...DEFAULT_CONFIG };
+  try { return JSON.parse(fs.readFileSync(CFG_PATH, "utf8")); } catch { return {}; }
+}
+function saveConfig(c) { fs.writeFileSync(CFG_PATH, JSON.stringify(c, null, 2)); }
+
+// ── HTTP helpers ──────────────────────────────────────────────────────────────
+function request(url, options = {}, body = null) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith("https") ? https : http;
+    const req = mod.request(url, options, (res) => {
+      let data = "";
+      res.on("data", (c) => (data += c));
+      res.on("end", () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch { resolve({ status: res.statusCode, body: data }); }
+      });
+    });
+    req.on("error", reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+function encodeForm(obj) {
+  return Object.entries(obj)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function loginWithPassword(username, password) {
+  const body = encodeForm({
+    grant_type: "password",
+    username,
+    password,
+    includePerms: true,
+  });
+  const res = await request(
+    apiUrl("/account/api/oauth/token"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "basic " + Buffer.from("ec684b8c687f479fadea3cb2ad83f5c6:e1f31c211f28413186262d37a13fc84d").toString("base64"),
+        "Content-Length": Buffer.byteLength(body),
+      },
+    },
+    body
+  );
+  if (res.status !== 200) {
+    const msg = res.body?.errorMessage || res.body?.error_description || "Login failed";
+    throw new Error(msg);
   }
+  return res.body; // { access_token, account_id, displayName, ... }
 }
 
-function saveConfig(config) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+async function getExchangeCode(accessToken) {
+  const res = await request(apiUrl("/account/api/oauth/exchange"), {
+    method: "GET",
+    headers: { Authorization: `bearer ${accessToken}` },
+  });
+  if (res.status !== 200) throw new Error("Failed to get exchange code");
+  return res.body.code;
 }
 
-function createWindow() {
-  // Remove menu bar
-  Menu.setApplicationMenu(null);
+async function fetchProfile(accessToken, accountId) {
+  try {
+    const res = await request(
+      apiUrl(`/fortnite/api/game/v2/profile/${accountId}/client/QueryProfile?profileId=athena`),
+      {
+        method: "POST",
+        headers: {
+          Authorization: `bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+      JSON.stringify({})
+    );
+    return res.status === 200 ? res.body : null;
+  } catch { return null; }
+}
 
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 750,
-    minWidth: 1000,
-    minHeight: 650,
+// ── Windows ───────────────────────────────────────────────────────────────────
+let loginWin = null;
+let mainWin = null;
+
+function createLoginWindow() {
+  loginWin = new BrowserWindow({
+    width: 440,
+    height: 540,
+    resizable: false,
     frame: false,
-    transparent: false,
-    backgroundColor: "#08080C",
-    titleBarStyle: "hidden",
-    icon: path.join(__dirname, "assets", "logo.png"),
+    transparent: true,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      devTools: false,
     },
   });
-
-  mainWindow.loadFile("renderer/index.html");
-
-  // Disable devtools in production
-  mainWindow.webContents.on("devtools-opened", () => {
-    mainWindow.webContents.closeDevTools();
-  });
+  loginWin.loadFile(path.join(__dirname, "renderer", "login.html"));
+  loginWin.on("closed", () => { loginWin = null; });
 }
 
-// IPC handlers — Window controls
-ipcMain.handle("minimize-window", () => mainWindow.minimize());
-ipcMain.handle("maximize-window", () => {
-  if (mainWindow.isMaximized()) mainWindow.unmaximize();
-  else mainWindow.maximize();
-});
-ipcMain.handle("close-window", () => mainWindow.close());
+function createMainWindow() {
+  mainWin = new BrowserWindow({
+    width: 1100,
+    height: 680,
+    minWidth: 900,
+    minHeight: 600,
+    frame: false,
+    transparent: false,
+    backgroundColor: "#0d0d0f",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      devTools: false,
+    },
+  });
+  mainWin.loadFile(path.join(__dirname, "renderer", "index.html"));
+  mainWin.on("closed", () => { mainWin = null; });
+}
 
-ipcMain.handle("open-external", (_, url) => {
-  return shell.openExternal(url);
+// ── IPC ───────────────────────────────────────────────────────────────────────
+ipcMain.handle("login", async (_, { username, password }) => {
+  try {
+    const token = await loginWithPassword(username, password);
+    const cfg = loadConfig();
+    cfg.session = {
+      accessToken: token.access_token,
+      accountId: token.account_id,
+      displayName: token.displayName || username,
+    };
+    saveConfig(cfg);
+    return { ok: true, displayName: cfg.session.displayName, accountId: cfg.session.accountId };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 });
 
-// Config
+ipcMain.handle("get-session", () => {
+  const cfg = loadConfig();
+  return cfg.session || null;
+});
+
+ipcMain.handle("logout", () => {
+  const cfg = loadConfig();
+  delete cfg.session;
+  saveConfig(cfg);
+  return true;
+});
+
+ipcMain.handle("open-main", () => {
+  if (loginWin && !loginWin.isDestroyed()) loginWin.close();
+  createMainWindow();
+});
+
+ipcMain.handle("open-login", () => {
+  if (mainWin && !mainWin.isDestroyed()) mainWin.close();
+  createLoginWindow();
+});
+
+ipcMain.handle("launch-game", async () => {
+  const cfg = loadConfig();
+  if (!cfg.session) return { ok: false, error: "Not logged in" };
+  if (!cfg.gamePath) return { ok: false, error: "Game path not set in settings" };
+  try {
+    const code = await getExchangeCode(cfg.session.accessToken);
+    const exe = path.join(cfg.gamePath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
+    if (!fs.existsSync(exe)) return { ok: false, error: "Game executable not found" };
+
+    const args = [
+      `-AUTH_LOGIN=unused`,
+      `-AUTH_PASSWORD=${code}`,
+      `-AUTH_TYPE=epic`,
+      `-epicapp=Fortnite`,
+      `-epicenv=Prod`,
+      `-epiclocale=en-us`,
+      `-noeac`,
+      `-nobe`,
+      `-fromfl=be`,
+      `-fltoken=none`,
+      `-skippatchcheck`,
+      `-notexturestreaming`,
+    ];
+
+    const proc = execFile(exe, args, { detached: true });
+    proc.unref();
+
+    // Inject patchers after 2s
+    setTimeout(() => injectPatchers(cfg.gamePath), 2000);
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
 ipcMain.handle("get-config", () => loadConfig());
-
-ipcMain.handle("save-config", (_, config) => {
-  const current = loadConfig();
-  const merged = { ...current, ...config };
-  saveConfig(merged);
-  return merged;
+ipcMain.handle("save-config", (_, c) => { saveConfig(c); return true; });
+ipcMain.handle("window-minimize", (e) => BrowserWindow.fromWebContents(e.sender)?.minimize());
+ipcMain.handle("window-maximize", (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  win.isMaximized() ? win.unmaximize() : win.maximize();
+});
+ipcMain.handle("window-close", (e) => BrowserWindow.fromWebContents(e.sender)?.close());
+ipcMain.handle("open-external", (_, url) => {
+  if (/^https?:\/\//.test(url)) shell.openExternal(url);
 });
 
-// ===== BUILD MANAGEMENT =====
-
-ipcMain.handle("import-build", async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ["openDirectory"],
-    title: "Select Fortnite Build Folder",
-  });
-  if (result.canceled || !result.filePaths[0]) return null;
-
-  const buildPath = result.filePaths[0];
-  const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
-
-  if (!fs.existsSync(exePath)) {
-    return { error: "FortniteClient-Win64-Shipping.exe not found in this folder. Make sure you selected the root Fortnite build folder." };
-  }
-
-  // Try to detect version from .manifest files or folder name
-  let detectedVersion = null;
-  try {
-    const manifestDir = path.join(buildPath, "FortniteGame", "Binaries", "Win64");
-    const files = fs.readdirSync(manifestDir);
-    for (const f of files) {
-      if (f.endsWith(".manifest")) {
-        const content = fs.readFileSync(path.join(manifestDir, f), "utf8");
-        const match = content.match(/(\d+\.\d+)/);
-        if (match) { detectedVersion = match[1]; break; }
-      }
-    }
-  } catch {}
-
-  // Fallback: try to detect from folder name
-  if (!detectedVersion) {
-    const folderMatch = buildPath.match(/(\d+\.\d+)/);
-    if (folderMatch) detectedVersion = folderMatch[1];
-  }
-
-  const buildId = crypto.randomUUID();
-
-  return {
-    id: buildId,
-    path: buildPath,
-    exePath,
-    version: detectedVersion,
-  };
+ipcMain.handle("fetch-profile", async () => {
+  const cfg = loadConfig();
+  if (!cfg.session) return null;
+  return await fetchProfile(cfg.session.accessToken, cfg.session.accountId);
 });
 
-ipcMain.handle("get-builds", () => {
-  const config = loadConfig();
-  return config.builds || [];
-});
-
-ipcMain.handle("remove-build", (_, buildId) => {
-  const config = loadConfig();
-  config.builds = (config.builds || []).filter((b) => b.id !== buildId);
-  saveConfig(config);
-  return config.builds;
-});
-
-// ===== LAUNCH GAME =====
-
-ipcMain.handle("launch-game", async (_, { buildPath, accessToken, accountId, exchangeCode }) => {
-  const exePath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping.exe");
-  const launcherPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteLauncher.exe");
-  const eacPath = path.join(buildPath, "FortniteGame", "Binaries", "Win64", "FortniteClient-Win64-Shipping_EAC.exe");
-
-  if (!fs.existsSync(exePath)) return { success: false, error: "Game executable not found" };
-
-  // Auth: use username@projectreboot.dev style with "epic" type (same as Reboot launcher)
-  // The username is the account's displayName, password is the access token
-  const username = `${accountId}@projectreboot.dev`;
-  const password = exchangeCode || accessToken;
-
-  const args = [
-    `-AUTH_LOGIN=${username}`,
-    `-AUTH_PASSWORD=${password}`,
-    `-AUTH_TYPE=epic`,
-    `-epicapp=Fortnite`,
-    `-epicenv=Prod`,
-    `-epiclocale=en-us`,
-    `-epicportal`,
-    `-skippatchcheck`,
-    `-nobe`,
-    `-fromfl=eac`,
-    `-fltoken=3db3ba5dcbd2e16703f3978d`,
-    `-caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ`,
+// ── DLL Injection ─────────────────────────────────────────────────────────────
+function injectPatchers(gamePath) {
+  const win64 = path.join(gamePath, "FortniteGame", "Binaries", "Win64");
+  const patchers = [
+    path.join(__dirname, "patchers", "Tellurium.dll"),
+    path.join(__dirname, "patchers", "Erbium.dll"),
+    path.join(__dirname, "patchers", "Memory.dll"),
   ];
-
-  try {
-    // Step 1: Spawn FortniteLauncher.exe suspended (so EAC can't run, but process exists)
-    if (fs.existsSync(launcherPath)) {
-      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
-        `$p = Start-Process -FilePath '${launcherPath}' -PassThru; Start-Sleep -Milliseconds 100`
-      ], { detached: true, stdio: "ignore" }).unref();
+  const injector = path.join(__dirname, "patchers", "injector.exe");
+  if (!fs.existsSync(injector)) return;
+  for (const dll of patchers) {
+    if (fs.existsSync(dll)) {
+      execFile(injector, [dll, "FortniteClient-Win64-Shipping.exe"], (err) => {
+        if (err) console.log("[inject] failed:", path.basename(dll));
+      });
     }
+  }
+}
 
-    // Step 2: Spawn EAC suspended
-    if (fs.existsSync(eacPath)) {
-      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
-        `$p = Start-Process -FilePath '${eacPath}' -PassThru; Start-Sleep -Milliseconds 100`
-      ], { detached: true, stdio: "ignore" }).unref();
-    }
-
-    // Step 3: Spawn the game with OPENSSL env var (same as Reboot launcher)
-    const game = spawn(exePath, args, {
-      detached: false,
-      stdio: "ignore",
-      cwd: path.dirname(exePath),
-      env: { ...process.env, OPENSSL_ia32cap: "~0x20000000" },
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+app.whenReady().then(() => {
+  // Block devtools globally
+  app.on("web-contents-created", (_, wc) => {
+    wc.on("before-input-event", (e, input) => {
+      if (input.key === "F12" ||
+         (input.control && input.shift && input.key === "I") ||
+         (input.control && input.shift && input.key === "J")) {
+        e.preventDefault();
+      }
     });
-
-    const gamePid = game.pid;
-    game.unref();
-
-    // Step 4: Inject Tellurium IMMEDIATELY (no delay — must be before game makes auth calls)
-    if (gamePid) {
-      const patcherDir = path.join(__dirname, "patchers");
-      const tellurium = path.join(patcherDir, "Tellurium.dll").replace(/\\/g, "\\\\");
-      const memory = path.join(patcherDir, "Memory.dll").replace(/\\/g, "\\\\");
-      const erbium = path.join(patcherDir, "Erbium.dll").replace(/\\/g, "\\\\");
-
-      // Inject immediately — Tellurium must intercept auth before game calls Epic servers
-      const ps = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Injector {
-    [DllImport("kernel32.dll")] public static extern IntPtr OpenProcess(int a, bool b, int c);
-    [DllImport("kernel32.dll")] public static extern IntPtr GetProcAddress(IntPtr h, string p);
-    [DllImport("kernel32.dll")] public static extern IntPtr GetModuleHandle(string m);
-    [DllImport("kernel32.dll")] public static extern IntPtr VirtualAllocEx(IntPtr h, IntPtr a, uint s, uint t, uint p);
-    [DllImport("kernel32.dll")] public static extern bool WriteProcessMemory(IntPtr h, IntPtr a, byte[] b, uint s, out int w);
-    [DllImport("kernel32.dll")] public static extern IntPtr CreateRemoteThread(IntPtr h, IntPtr a, uint s, IntPtr f, IntPtr p, uint c, IntPtr i);
-    [DllImport("kernel32.dll")] public static extern bool CloseHandle(IntPtr h);
-}
-"@
-function Inject([int]$pid,[string]$dll){
-  $h=[Injector]::OpenProcess(0x43A,$false,$pid)
-  $b=[System.Text.Encoding]::UTF8.GetBytes($dll+[char]0)
-  $a=[Injector]::VirtualAllocEx($h,[IntPtr]::Zero,$b.Length+1,0x3000,0x4)
-  $w=0;[Injector]::WriteProcessMemory($h,$a,$b,$b.Length,[ref]$w)|Out-Null
-  $f=[Injector]::GetProcAddress([Injector]::GetModuleHandle("kernel32.dll"),"LoadLibraryA")
-  [Injector]::CreateRemoteThread($h,[IntPtr]::Zero,0,$f,$a,0,[IntPtr]::Zero)|Out-Null
-  [Injector]::CloseHandle($h)|Out-Null
-}
-Inject ${gamePid} "${tellurium}"
-Start-Sleep -Milliseconds 200
-Inject ${gamePid} "${memory}"
-Start-Sleep -Milliseconds 200
-Inject ${gamePid} "${erbium}"
-`;
-      spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps], {
-        detached: true, stdio: "ignore"
-      }).unref();
-    }
-
-    // Update last played on the build
-    const config = loadConfig();
-    const build = (config.builds || []).find((b) => b.path === buildPath);
-    if (build) {
-      build.lastPlayed = new Date().toISOString();
-      saveConfig(config);
-    }
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: "Failed to launch game" };
-  }
-});
-
-// Legacy select-game-path (kept for settings compatibility)
-ipcMain.handle("select-game-path", async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ["openDirectory"],
-    title: "Select Fortnite Build Folder",
+    wc.setWindowOpenHandler(() => ({ action: "deny" }));
   });
-  if (!result.canceled && result.filePaths[0]) {
-    const config = loadConfig();
-    config.gamePath = result.filePaths[0];
-    saveConfig(config);
-    return result.filePaths[0];
+
+  const cfg = loadConfig();
+  if (cfg.session?.accessToken) {
+    createMainWindow();
+  } else {
+    createLoginWindow();
   }
-  return null;
 });
 
-app.whenReady().then(createWindow);
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});

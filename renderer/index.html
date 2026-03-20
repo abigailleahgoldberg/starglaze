@@ -1,68 +1,517 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src *; img-src * data:; font-src * data:;">
-  <title>Star Glaze</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<title>StarGlaze</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0d0d0f;
+    --sidebar: #111113;
+    --surface: #16161a;
+    --surface2: #1c1c22;
+    --border: #222228;
+    --accent: #7c5cbf;
+    --accent2: #9b7de0;
+    --text: #eeeef4;
+    --sub: #6e6e8a;
+    --sub2: #3a3a52;
+    --green: #3dd68c;
+    --red: #e05c5c;
+  }
+  html, body {
+    width: 100vw; height: 100vh;
+    background: var(--bg);
+    font-family: -apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 60px; background: var(--sidebar); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 0; flex-shrink: 0; position: relative; z-index: 10;
+  }
+  .sidebar-logo { width: 32px; height: 32px; margin-bottom: 20px; object-fit: contain; }
+  .sidebar-logo-fallback {
+    width: 32px; height: 32px; margin-bottom: 20px;
+    background: var(--accent); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: white;
+  }
+  .nav { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .nav-btn {
+    width: 40px; height: 40px; border-radius: 10px; border: none;
+    background: transparent; color: var(--sub2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s; position: relative;
+  }
+  .nav-btn svg { width: 20px; height: 20px; }
+  .nav-btn:hover { background: var(--surface2); color: var(--sub); }
+  .nav-btn.active { background: var(--surface2); color: var(--accent2); }
+  .nav-btn.active::before {
+    content: ''; position: absolute; left: -1px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 20px; background: var(--accent2); border-radius: 0 2px 2px 0;
+  }
+  .sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .settings-btn {
+    width: 40px; height: 40px; border-radius: 10px; border: none;
+    background: transparent; color: var(--sub2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .settings-btn:hover { background: var(--surface2); color: var(--sub); }
+
+  /* ── Main content ── */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ── Titlebar ── */
+  .titlebar {
+    height: 44px; display: flex; align-items: center; padding: 0 16px;
+    -webkit-app-region: drag; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; gap: 10px;
+  }
+  .titlebar-actions { margin-left: auto; display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .tb-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: none;
+    background: transparent; color: var(--sub2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.12s, color 0.12s;
+  }
+  .tb-btn:hover { background: var(--surface2); color: var(--text); }
+  .tb-btn.x:hover { background: #3a1818; color: var(--red); }
+
+  /* ── Player header ── */
+  .player-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 24px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .player-avatar {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: var(--surface2); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; overflow: hidden;
+  }
+  .player-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+  .player-info { flex: 1; min-width: 0; }
+  .player-welcome { font-size: 11px; color: var(--sub); font-weight: 500; margin-bottom: 2px; }
+  .player-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+  .play-btn {
+    padding: 10px 28px; background: var(--accent); border: none; border-radius: 8px;
+    color: white; font-size: 13px; font-weight: 800; letter-spacing: 0.3px;
+    cursor: pointer; transition: background 0.15s; font-family: inherit;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .play-btn svg { width: 14px; height: 14px; }
+  .play-btn:hover { background: var(--accent2); }
+  .play-btn.loading { background: var(--sub2); cursor: wait; }
+
+  /* ── Page content ── */
+  .page { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .page::-webkit-scrollbar { width: 4px; }
+  .page::-webkit-scrollbar-track { background: transparent; }
+  .page::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Hide pages */
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  /* ── Home ── */
+  .hero {
+    width: 100%; aspect-ratio: 16/7; border-radius: 12px; overflow: hidden;
+    position: relative; background: var(--surface); margin-bottom: 14px;
+  }
+  .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%);
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 24px;
+  }
+  .hero-title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.3px; color: white; margin-bottom: 6px; }
+  .hero-desc { font-size: 12px; color: rgba(255,255,255,0.7); max-width: 360px; line-height: 1.5; }
+
+  .promo-card {
+    width: 100%; border-radius: 12px; overflow: hidden;
+    background: linear-gradient(135deg, #2a1a5e 0%, #1a0a3e 40%, #0a0520 100%);
+    border: 1px solid #3a2a7e;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; position: relative; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .promo-card:hover { border-color: var(--accent); }
+  .promo-title { font-size: 18px; font-weight: 900; color: white; margin-bottom: 4px; }
+  .promo-desc { font-size: 12px; color: rgba(255,255,255,0.65); }
+  .promo-ext {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.5); flex-shrink: 0;
+  }
+  .promo-ext svg { width: 14px; height: 14px; }
+
+  /* ── Locker tab ── */
+  .sec-header { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 14px; }
+  .skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .skin-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    aspect-ratio: 3/4; display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-end; overflow: hidden; position: relative;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .skin-card:hover { border-color: var(--accent); }
+  .skin-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .skin-name {
+    position: relative; z-index: 1; font-size: 10px; font-weight: 700;
+    color: white; background: rgba(0,0,0,0.65); width: 100%; text-align: center;
+    padding: 5px 4px; letter-spacing: 0.2px;
+  }
+  .skin-placeholder {
+    width: 100%; height: 100%; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; color: var(--sub2);
+  }
+
+  /* ── Leaderboard tab ── */
+  .lb-table { width: 100%; border-collapse: collapse; }
+  .lb-table th {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--sub2); padding: 0 14px 10px; text-align: left;
+  }
+  .lb-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+  .lb-table tr:last-child td { border-bottom: none; }
+  .lb-table tbody tr { transition: background 0.1s; }
+  .lb-table tbody tr:hover td { background: var(--surface); }
+  .lb-rank { color: var(--accent2); font-weight: 800; }
+  .lb-name { color: var(--text); }
+  .lb-stat { color: var(--sub); }
+
+  /* ── Shop tab ── */
+  .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .shop-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; cursor: pointer; transition: border-color 0.15s;
+  }
+  .shop-card:hover { border-color: var(--accent); }
+  .shop-img { width: 100%; aspect-ratio: 1; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--sub2); }
+  .shop-img img { width: 100%; height: 100%; object-fit: cover; }
+  .shop-info { padding: 9px 10px; }
+  .shop-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shop-price { font-size: 11px; color: var(--accent2); font-weight: 700; }
+
+  /* ── Settings tab ── */
+  .settings-section { margin-bottom: 20px; }
+  .settings-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--sub2); margin-bottom: 10px; }
+  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .settings-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 14px; }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+  .settings-row-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .settings-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; font-size: 12px; color: var(--text);
+    outline: none; transition: border-color 0.15s; font-family: inherit;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+  .settings-input::placeholder { color: var(--sub2); }
+  .settings-save {
+    margin-top: 4px; padding: 10px 24px; background: var(--accent); border: none;
+    border-radius: 8px; color: white; font-size: 12px; font-weight: 800;
+    cursor: pointer; transition: background 0.15s; font-family: inherit;
+  }
+  .settings-save:hover { background: var(--accent2); }
+  .logout-btn {
+    padding: 10px 24px; background: transparent; border: 1px solid var(--border);
+    border-radius: 8px; color: var(--red); font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: inherit;
+  }
+  .logout-btn:hover { background: rgba(224,92,92,0.08); border-color: var(--red); }
+
+  .empty { color: var(--sub); font-size: 13px; text-align: center; padding: 40px 0; font-weight: 500; }
+
+  /* launch notification */
+  .launch-toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 20px; font-size: 12px; font-weight: 600; color: var(--text);
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap;
+    z-index: 100;
+  }
+  .launch-toast.show { opacity: 1; }
+  .launch-toast.ok { border-color: var(--green); color: var(--green); }
+  .launch-toast.err { border-color: var(--red); color: var(--red); }
+</style>
 </head>
 <body>
-  <!-- Custom Title Bar -->
-  <div class="titlebar" id="titlebar">
-    <div class="titlebar-drag">
-      <img src="./logo.png" class="titlebar-logo" alt="S">
-      <span class="titlebar-title">Star Glaze</span>
-      <span class="titlebar-version">v1.0.0</span>
-    </div>
-    <div class="titlebar-controls">
-      <button class="tb-btn minimize" id="btn-minimize">
-        <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
-      </button>
-      <button class="tb-btn maximize" id="btn-maximize">
-        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-      </button>
-      <button class="tb-btn close" id="btn-close">
-        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
-    </div>
-  </div>
+<div class="app">
 
-  <!-- Main Layout -->
-  <div class="app-layout">
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <img src="./logo.png" alt="Star Glaze" class="sidebar-logo-img">
-        <div class="sidebar-logo-text">
-          <span class="logo-star">STAR</span>
-          <span class="logo-glaze">GLAZE</span>
-        </div>
-      </div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <img class="sidebar-logo" src="../assets/logo.png" alt="SG" onerror="this.style.display='none'">
 
-      <div class="sidebar-nav" id="sidebar-nav">
-        <!-- Nav items injected by JS based on auth state -->
-      </div>
-
-      <!-- Sidebar Footer -->
-      <div class="sidebar-footer" id="sidebar-footer">
-        <div class="server-status">
-          <div class="status-dot online"></div>
-          <span>Server Online</span>
-        </div>
-      </div>
+    <nav class="nav">
+      <!-- Home -->
+      <button class="nav-btn active" data-tab="home" onclick="switchTab('home', this)" title="Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </button>
+      <!-- Locker -->
+      <button class="nav-btn" data-tab="locker" onclick="switchTab('locker', this)" title="Locker">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+      </button>
+      <!-- Shop -->
+      <button class="nav-btn" data-tab="shop" onclick="switchTab('shop', this)" title="Item Shop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+      </button>
+      <!-- Leaderboard -->
+      <button class="nav-btn" data-tab="leaderboard" onclick="switchTab('leaderboard', this)" title="Leaderboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </button>
     </nav>
 
-    <!-- Main Content -->
-    <main class="content" id="content">
-      <!-- Pages rendered by JS -->
-    </main>
+    <div class="sidebar-bottom">
+      <button class="settings-btn" onclick="switchTab('settings', null)" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <!-- Floating Particles Canvas -->
-  <canvas id="particles" class="particles-canvas"></canvas>
+  <!-- Main -->
+  <div class="main">
+    <!-- Titlebar -->
+    <div class="titlebar">
+      <span style="font-size:12px;font-weight:700;color:var(--sub);letter-spacing:0.2px;" id="title-text">Home</span>
+      <div class="titlebar-actions">
+        <button class="tb-btn" onclick="sg.windowMinimize()">
+          <svg viewBox="0 0 12 2" width="12" height="2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
+        </button>
+        <button class="tb-btn" onclick="sg.windowMaximize()">
+          <svg viewBox="0 0 12 12" width="12" height="12"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        </button>
+        <button class="tb-btn x" onclick="sg.windowClose()">
+          <svg viewBox="0 0 12 12" width="12" height="12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
 
-  <script src="app.js"></script>
+    <!-- Player header -->
+    <div class="player-header">
+      <div class="player-avatar" id="avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28" style="color:var(--sub2)">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="player-info">
+        <div class="player-welcome">Welcome,</div>
+        <div class="player-name" id="player-name">Player</div>
+      </div>
+      <button class="play-btn" id="play-btn" onclick="launchGame()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Play
+      </button>
+    </div>
+
+    <!-- Pages -->
+    <div class="page">
+
+      <!-- HOME -->
+      <div class="tab active" id="tab-home">
+        <div class="hero">
+          <img src="../assets/banner.png" alt="" onerror="this.style.display='none'">
+          <div class="hero-overlay">
+            <div class="hero-title">Chapter 1, Season 8</div>
+            <div class="hero-desc">The original Fortnite experience. Pirates, a volcano, and the best season in Battle Royale history. Now playable on StarGlaze.</div>
+          </div>
+        </div>
+
+        <div class="promo-card" onclick="sg.openExternal('http://26.252.123.243:8080/donate')">
+          <div>
+            <div class="promo-title">Support StarGlaze</div>
+            <div class="promo-desc">Help keep the servers online and the experience alive.</div>
+          </div>
+          <div class="promo-ext">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCKER -->
+      <div class="tab" id="tab-locker">
+        <div class="sec-header">Your Locker</div>
+        <div class="skins-grid" id="locker-grid">
+          <div class="empty" style="grid-column:1/-1">Loading locker...</div>
+        </div>
+      </div>
+
+      <!-- SHOP -->
+      <div class="tab" id="tab-shop">
+        <div class="sec-header">Item Shop</div>
+        <div class="shop-grid" id="shop-grid">
+          <div class="empty" style="grid-column:1/-1">Loading shop...</div>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div class="tab" id="tab-leaderboard">
+        <div class="sec-header">Leaderboard</div>
+        <table class="lb-table">
+          <thead><tr>
+            <th>#</th><th>Player</th><th>Wins</th><th>Kills</th><th>K/D</th>
+          </tr></thead>
+          <tbody id="lb-body"><tr><td colspan="5" style="text-align:center;color:var(--sub);padding:30px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="tab" id="tab-settings">
+        <div class="settings-section">
+          <div class="settings-title">Game</div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-label">Game Path</div>
+                <div class="settings-row-sub">Folder containing FortniteGame/</div>
+              </div>
+              <input class="settings-input" id="game-path" placeholder="C:\Fortnite\S8.51" spellcheck="false">
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <button class="settings-save" onclick="saveSettings()">Save Changes</button>
+          <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="launch-toast" id="toast"></div>
+
+<script>
+const TABS = ["home","locker","shop","leaderboard","settings"];
+const TAB_NAMES = { home:"Home", locker:"Locker", shop:"Item Shop", leaderboard:"Leaderboard", settings:"Settings" };
+let session = null;
+
+function switchTab(name, btn) {
+  TABS.forEach(t => {
+    document.getElementById("tab-" + t).classList.remove("active");
+    document.querySelectorAll(".nav-btn[data-tab]").forEach(b => b.classList.remove("active"));
+  });
+  document.getElementById("tab-" + name).classList.add("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("title-text").textContent = TAB_NAMES[name] || name;
+  if (name === "locker") loadLocker();
+  if (name === "shop") loadShop();
+  if (name === "leaderboard") loadLeaderboard();
+}
+
+function showToast(msg, type = "") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "launch-toast show" + (type ? " " + type : "");
+  setTimeout(() => t.className = "launch-toast", 3000);
+}
+
+async function launchGame() {
+  const btn = document.getElementById("play-btn");
+  btn.classList.add("loading");
+  btn.textContent = "Launching...";
+  const res = await sg.launchGame();
+  btn.classList.remove("loading");
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play';
+  if (res.ok) showToast("Game launched!", "ok");
+  else showToast(res.error || "Launch failed", "err");
+}
+
+async function loadLocker() {
+  const grid = document.getElementById("locker-grid");
+  grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Loading...</div>';
+  try {
+    const profile = await sg.fetchProfile();
+    if (!profile) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Could not load locker</div>'; return; }
+    const items = profile.profileChanges?.[0]?.profile?.items || {};
+    const skins = Object.values(items).filter(i => i.templateId?.startsWith("AthenaCharacter:"));
+    if (!skins.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No skins found</div>'; return; }
+    grid.innerHTML = skins.map(s => {
+      const id = s.templateId.split(":")[1].toLowerCase();
+      const name = s.attributes?.favorite ? "⭐ " : "" + (id.replace(/^cid_\d+_athena_commando_[mf]_/i,"").replace(/_/g," ") || id);
+      const imgUrl = `https://fortnite-api.com/images/cosmetics/br/${id}/icon.png`;
+      return `<div class="skin-card">
+        <img src="${imgUrl}" onerror="this.style.display='none'" />
+        <div class="skin-name">${name}</div>
+      </div>`;
+    }).join("");
+  } catch(e) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Failed to load locker</div>';
+  }
+}
+
+async function loadShop() {
+  const grid = document.getElementById("shop-grid");
+  grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Loading shop...</div>';
+  try {
+    // Try backend storefront
+    const cfg = await sg.getConfig();
+    // Use public Fortnite API for OG shop data as fallback
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Shop coming soon</div>';
+  } catch {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Could not load shop</div>';
+  }
+}
+
+async function loadLeaderboard() {
+  const body = document.getElementById("lb-body");
+  try {
+    // Show placeholder — will wire up once backend endpoint confirmed
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:30px">Leaderboard coming soon</td></tr>';
+  } catch {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--sub)">Failed to load</td></tr>';
+  }
+}
+
+async function saveSettings() {
+  const cfg = await sg.getConfig();
+  cfg.gamePath = document.getElementById("game-path").value.trim();
+  await sg.saveConfig(cfg);
+  showToast("Settings saved", "ok");
+}
+
+async function doLogout() {
+  await sg.logout();
+  await sg.openLogin();
+}
+
+async function init() {
+  session = await sg.getSession();
+  if (session) {
+    document.getElementById("player-name").textContent = session.displayName || "Player";
+  }
+  const cfg = await sg.getConfig();
+  if (cfg.gamePath) document.getElementById("game-path").value = cfg.gamePath;
+}
+
+init();
+</script>
 </body>
 </html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Star Glaze</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141418;
+    --border: #1e1e28;
+    --accent: #7c5cbf;
+    --accent2: #9b7de0;
+    --text: #eeeef4;
+    --sub: #6e6e8a;
+    --sub2: #3a3a52;
+    --red: #e05c5c;
+  }
+  html, body {
+    width: 440px; height: 540px;
+    background: transparent;
+    font-family: -apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  .win {
+    width: 440px; height: 540px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* drag bar */
+  .drag { height: 36px; -webkit-app-region: drag; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; }
+  .close-btn {
+    width: 22px; height: 22px; border-radius: 50%; border: none;
+    background: transparent; color: var(--sub2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-app-region: no-drag; transition: background 0.12s, color 0.12s;
+  }
+  .close-btn:hover { background: #3a1818; color: var(--red); }
+
+  /* logo area */
+  .logo-area {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 0 28px;
+  }
+  .logo-area img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 14px; }
+  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+  .brand span { color: var(--accent2); }
+  .tagline { font-size: 12px; color: var(--sub); margin-top: 4px; font-weight: 500; }
+
+  /* form */
+  .form { padding: 0 40px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: 0.8px; }
+  .field input {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    outline: none; transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--sub2); }
+
+  .err {
+    background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3);
+    border-radius: 7px; padding: 10px 14px;
+    font-size: 12px; font-weight: 600; color: var(--red);
+    display: none;
+  }
+  .err.show { display: block; }
+
+  .submit {
+    margin-top: 4px; padding: 13px;
+    background: var(--accent); border: none; border-radius: 8px;
+    color: white; font-size: 13px; font-weight: 800;
+    letter-spacing: 0.3px; cursor: pointer; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .submit:hover { background: var(--accent2); }
+  .submit:disabled { background: var(--sub2); cursor: not-allowed; }
+
+  .footer-links {
+    display: flex; justify-content: center; gap: 18px;
+    padding: 20px 40px 28px;
+  }
+  .link {
+    font-size: 11px; font-weight: 600; color: var(--sub);
+    cursor: pointer; transition: color 0.12s;
+  }
+  .link:hover { color: var(--accent2); }
+
+  /* loading spinner */
+  .spin {
+    display: none; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .submit.loading .spin { display: inline-block; }
+  .submit.loading .label { display: none; }
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="drag">
+    <button class="close-btn" onclick="sg.windowClose()">
+      <svg viewBox="0 0 12 12" width="10" height="10"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="logo-area">
+    <img src="../assets/logo.png" alt="logo" onerror="this.style.display='none'">
+    <div class="brand">Star<span>Glaze</span></div>
+    <div class="tagline">OG Fortnite Private Server</div>
+  </div>
+
+  <div class="form">
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="Enter your username" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Enter your password" autocomplete="off">
+    </div>
+
+    <div class="err" id="err"></div>
+
+    <button class="submit" id="submit" onclick="doLogin()">
+      <span class="label">Sign In</span>
+      <div class="spin"></div>
+    </button>
+  </div>
+
+  <div class="footer-links">
+    <span class="link" onclick="sg.openExternal('http://26.252.123.243:8080/register')">Create Account</span>
+    <span class="link" onclick="sg.openExternal('http://26.252.123.243:8080/forgot')">Forgot Password</span>
+  </div>
+</div>
+
+<script>
+const usernameEl = document.getElementById("username");
+const passwordEl = document.getElementById("password");
+const submitEl   = document.getElementById("submit");
+const errEl      = document.getElementById("err");
+
+function showErr(msg) {
+  errEl.textContent = msg;
+  errEl.classList.add("show");
+}
+function clearErr() { errEl.classList.remove("show"); }
+
+async function doLogin() {
+  const username = usernameEl.value.trim();
+  const password = passwordEl.value;
+  if (!username || !password) { showErr("Please enter your username and password."); return; }
+
+  clearErr();
+  submitEl.classList.add("loading");
+  submitEl.disabled = true;
+
+  const res = await sg.login({ username, password });
+
+  submitEl.classList.remove("loading");
+  submitEl.disabled = false;
+
+  if (res.ok) {
+    await sg.openMain();
+  } else {
+    showErr(res.error || "Login failed. Check your credentials.");
+  }
+}
+
+// Enter key
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doLogin();
+});
+
+usernameEl.focus();
+</script>
+</body>
+</html>

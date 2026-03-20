@@ -28,25 +28,36 @@
     user-select: none;
     overflow: hidden;
     display: flex; align-items: center; justify-content: center;
+    padding-top: 42px;
   }
 
-  /* ── Floating window controls ── */
-  .wc {
-    position: fixed; top: 16px; right: 16px;
-    display: flex; align-items: center; gap: 20px; z-index: 99;
+  /* ── Titlebar ── */
+  .titlebar {
+    position: fixed; top: 0; left: 0; right: 0; height: 42px; z-index: 999;
+    display: flex; align-items: center;
+    background: #16182e; border-bottom: 1px solid #1e2040;
+    -webkit-app-region: drag;
+  }
+  .tb-logo {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 0 0 14px; pointer-events: none;
+  }
+  .tb-logo img { width: 22px; height: 22px; object-fit: contain; display: block; }
+  .tb-logo-text { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
+  .tb-logo-text span { color: #D946EF; }
+  .tb-spacer { flex: 1; }
+  .tb-btns {
+    display: flex; align-items: center; height: 42px;
     -webkit-app-region: no-drag;
   }
-  .wc-btn {
-    background: none; border: none; cursor: pointer;
-    color: #A0A0B0; font-size: 14px; line-height: 1;
-    padding: 4px; transition: color 0.12s; display: flex; align-items: center;
+  .tb-btn {
+    width: 44px; height: 42px; background: none; border: none;
+    color: #6B7280; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s;
   }
-  .wc-btn:hover { color: #ffffff; }
-  .wc-btn.x:hover { color: var(--red); }
-  .drag-area {
-    position: fixed; top: 0; left: 0; right: 0; height: 50px;
-    -webkit-app-region: drag; z-index: 0;
-  }
+  .tb-btn:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .tb-btn.x:hover { background: #c0392b; color: #fff; }
 
   /* ── Login card ── */
   .card {
@@ -118,25 +129,26 @@
 </head>
 <body>
 
-<div class="drag-area"></div>
-<div class="wc">
-  <button class="wc-btn" onclick="sg.windowMinimize()">
-    <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
-  </button>
-  <button class="wc-btn x" onclick="sg.windowClose()">
-    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-  </button>
+<!-- Titlebar -->
+<div class="titlebar">
+  <div class="tb-logo">
+    <img src="../assets/logo.png" alt="" onerror="this.style.display='none'">
+    <span class="tb-logo-text">Star<span>Glaze</span></span>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-btns">
+    <button class="tb-btn" onclick="sg.windowMinimize()">
+      <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
+    </button>
+    <button class="tb-btn x" onclick="sg.windowClose()">
+      <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
 </div>
 
 <div class="card">
-  <!-- Phoenix logo -->
   <div class="logo-wrap">
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Stylized star/burst logo -->
-      <circle cx="24" cy="24" r="22" fill="rgba(217,70,239,0.12)"/>
-      <path d="M24 6 L27 18 L38 12 L30 22 L42 24 L30 26 L38 36 L27 30 L24 42 L21 30 L10 36 L18 26 L6 24 L18 22 L10 12 L21 18 Z" fill="#D946EF" opacity="0.9"/>
-      <circle cx="24" cy="24" r="5" fill="#D946EF"/>
-    </svg>
+    <img src="../assets/logo.png" style="width:52px;height:52px;object-fit:contain;display:block;" onerror="this.style.display='none'">
   </div>
 
   <div class="brand">StarGlaze</div>

@@ -17,35 +17,47 @@ html, body {
   color:#fff;
 }
 
-/* ─── Window controls (floating, top-right) ─────────────────────── */
-.wc {
-  position:fixed; top:14px; right:14px; z-index:999;
-  display:flex; align-items:center; gap:18px;
+/* ─── Titlebar ──────────────────────────────────────────────────── */
+.titlebar {
+  position:fixed; top:0; left:0; right:0; height:44px; z-index:999;
+  display:flex; align-items:center;
+  background:#16182e;
+  border-bottom:1px solid #1e2040;
+  -webkit-app-region:drag;
+}
+.tb-logo {
+  display:flex; align-items:center; gap:9px;
+  padding:0 0 0 14px; flex-shrink:0;
+  -webkit-app-region:no-drag;
+  pointer-events:none;
+}
+.tb-logo img { width:26px; height:26px; object-fit:contain; display:block; }
+.tb-logo-text { font-size:14px; font-weight:800; color:#fff; letter-spacing:-.3px; }
+.tb-logo-text span { color:#D946EF; }
+.tb-spacer { flex:1; }
+.tb-btns {
+  display:flex; align-items:center; height:44px;
   -webkit-app-region:no-drag;
 }
-.wc button {
-  background:none; border:none; cursor:pointer; padding:3px;
-  color:#6B7280; display:flex; align-items:center;
-  transition:color .12s;
+.tb-btn {
+  width:46px; height:44px; background:none; border:none;
+  color:#6B7280; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; transition:background .12s, color .12s;
 }
-.wc button:hover { color:#fff; }
-.wc button.x:hover { color:#EF4444; }
-
-/* ─── Drag strip ────────────────────────────────────────────────── */
-.drag { position:fixed; top:0; left:0; right:0; height:44px; -webkit-app-region:drag; z-index:0; pointer-events:none; }
+.tb-btn:hover { background:rgba(255,255,255,.06); color:#fff; }
+.tb-btn.x:hover { background:#c0392b; color:#fff; }
 
 /* ─── App layout ────────────────────────────────────────────────── */
-.app { display:flex; height:100vh; }
+.app { display:flex; height:100vh; padding-top:44px; }
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
 .sidebar {
   width:66px; flex-shrink:0;
   background:#16182e;
+  border-right:1px solid #1e2040;
   display:flex; flex-direction:column; align-items:center;
-  padding:18px 0 18px; gap:0;
+  padding:16px 0 16px; gap:0;
 }
-
-.logo { margin-bottom:28px; }
 
 .nav { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
 
@@ -257,19 +269,24 @@ html, body {
 </head>
 <body>
 
-<div class="drag"></div>
-
-<!-- Window controls -->
-<div class="wc">
-  <button onclick="sg.windowMinimize()">
-    <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
-  </button>
-  <button onclick="sg.windowMaximize()">
-    <svg width="11" height="11" viewBox="0 0 11 11"><rect x=".75" y=".75" width="9.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-  </button>
-  <button class="x" onclick="sg.windowClose()">
-    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-  </button>
+<!-- Titlebar -->
+<div class="titlebar">
+  <div class="tb-logo">
+    <img src="../assets/logo.png" alt="" onerror="this.style.display='none'">
+    <span class="tb-logo-text">Star<span>Glaze</span></span>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-btns">
+    <button class="tb-btn" onclick="sg.windowMinimize()">
+      <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
+    </button>
+    <button class="tb-btn" onclick="sg.windowMaximize()">
+      <svg width="11" height="11" viewBox="0 0 11 11"><rect x=".75" y=".75" width="9.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+    </button>
+    <button class="tb-btn x" onclick="sg.windowClose()">
+      <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
 </div>
 
 <div class="app">
@@ -277,19 +294,7 @@ html, body {
   <!-- ── Sidebar ── -->
   <div class="sidebar">
 
-    <!-- Logo — stylized bird/star in magenta -->
-    <div class="logo">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-        <!-- wing left -->
-        <path d="M15 4 C11 8, 4 9, 3 15 C5 12, 10 12, 13 15 C10 11, 11 6, 15 4Z" fill="#D946EF"/>
-        <!-- wing right -->
-        <path d="M15 4 C19 8, 26 9, 27 15 C25 12, 20 12, 17 15 C20 11, 19 6, 15 4Z" fill="#D946EF"/>
-        <!-- body/tail -->
-        <path d="M13 15 C12 19, 9 24, 15 27 C21 24, 18 19, 17 15 C16 17, 15 18, 15 18 C15 18, 14 17, 13 15Z" fill="#D946EF"/>
-        <!-- head -->
-        <circle cx="15" cy="13" r="2.5" fill="#D946EF"/>
-      </svg>
-    </div>
+
 
     <nav class="nav">
 

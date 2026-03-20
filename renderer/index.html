@@ -39,8 +39,8 @@ html, body {
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
 .sidebar {
-  width:62px; flex-shrink:0;
-  background:#0D0F1A;
+  width:66px; flex-shrink:0;
+  background:#16182e;
   display:flex; flex-direction:column; align-items:center;
   padding:18px 0 18px; gap:0;
 }
@@ -50,15 +50,18 @@ html, body {
 .nav { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
 
 .nb {
-  width:42px; height:42px; border-radius:10px;
+  width:48px; height:48px; border-radius:12px;
   border:none; background:transparent;
   color:#5A5F78; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   transition:background .15s, color .15s;
 }
-.nb:hover { background:rgba(255,255,255,.06); color:#A0A6BF; }
-.nb.on    { background:rgba(255,255,255,.10); color:#E5E7EB; }
-.nb svg   { width:20px; height:20px; }
+.nb:hover { background:rgba(255,255,255,.07); color:#B0B6D0; }
+.nb.on    { background:rgba(255,255,255,.11); color:#FFFFFF; }
+.nb svg   { width:26px; height:26px; stroke-width:2; }
+/* Filled home icon when active */
+.nb.on svg.icon-home { fill:#FFFFFF; stroke:none; }
+.nb.on svg.icon-home path, .nb.on svg.icon-home polyline { fill:#FFFFFF; stroke:none; }
 
 .sidebar-foot { margin-top:auto; }
 
@@ -290,52 +293,43 @@ html, body {
 
     <nav class="nav">
 
-      <!-- Home -->
+      <!-- Home — solid filled house -->
       <button class="nb on" data-tab="home" onclick="go('home',this)" title="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 10L12 3l9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>
-          <polyline points="9 21 9 12 15 12 15 21"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M10.55 2.53a2 2 0 0 1 2.9 0l7 7.42A2 2 0 0 1 21 11.4V20a2 2 0 0 1-2 2h-4v-6h-2v6H5a2 2 0 0 1-2-2v-8.6a2 2 0 0 1 .55-1.38z"/>
         </svg>
       </button>
 
-      <!-- Stats / bar chart -->
+      <!-- Stats — solid bar chart -->
       <button class="nb" data-tab="leaderboard" onclick="go('leaderboard',this)" title="Leaderboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="4" y1="20" x2="4" y2="13"/>
-          <line x1="9" y1="20" x2="9" y2="4"/>
-          <line x1="14" y1="20" x2="14" y2="9"/>
-          <line x1="19" y1="20" x2="19" y2="14"/>
-          <line x1="2" y1="20" x2="21" y2="20"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <rect x="2" y="13" width="4" height="8" rx="1"/>
+          <rect x="9" y="8" width="4" height="13" rx="1"/>
+          <rect x="16" y="4" width="4" height="17" rx="1"/>
         </svg>
       </button>
 
-      <!-- Locker / collection card -->
+      <!-- Locker — solid document -->
       <button class="nb" data-tab="locker" onclick="go('locker',this)" title="Locker">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="5" y="2" width="14" height="20" rx="2"/>
-          <line x1="9" y1="7" x2="15" y2="7"/>
-          <line x1="9" y1="11" x2="15" y2="11"/>
-          <line x1="9" y1="15" x2="12" y2="15"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6zm7 1.5L18.5 8H13V3.5zM8 12h8v1.5H8V12zm0 3h6v1.5H8V15z"/>
         </svg>
       </button>
 
-      <!-- Shop / bag -->
+      <!-- Shop — solid bag -->
       <button class="nb" data-tab="shop" onclick="go('shop',this)" title="Item Shop">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-          <line x1="3" y1="6" x2="21" y2="6"/>
-          <path d="M16 10a4 4 0 01-8 0"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M19 7h-1.27A4 4 0 0 0 8.27 7H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-8a3 3 0 0 0-2-2.83V7zm-7-3a2 2 0 0 1 2 3h-4a2 2 0 0 1 2-3zm0 10a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
         </svg>
       </button>
 
     </nav>
 
     <div class="sidebar-foot">
-      <!-- Settings gear -->
+      <!-- Settings — solid gear -->
       <button class="nb" onclick="go('settings',this)" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.36.07-.71.07-1.08s-.03-.73-.07-1.08l2.35-1.82c.21-.16.27-.45.13-.68l-2.23-3.86c-.14-.23-.42-.31-.65-.23l-2.77 1.12c-.58-.44-1.2-.8-1.88-1.07L14 2.42c-.05-.27-.3-.42-.57-.42h-4.46c-.27 0-.52.15-.57.42L8.11 5.37C7.43 5.64 6.81 6 6.23 6.44L3.46 5.32c-.23-.08-.51 0-.65.23L.58 9.41c-.14.23-.07.52.13.68l2.35 1.82c-.04.35-.06.7-.06 1.09s.02.73.06 1.08L.71 15.9c-.2.16-.27.45-.13.68l2.23 3.86c.14.23.42.31.65.23l2.77-1.12c.58.44 1.2.8 1.88 1.07l.39 2.95c.05.27.3.42.57.42h4.46c.27 0 .52-.15.57-.42l.39-2.95a7.9 7.9 0 0 0 1.88-1.07l2.77 1.12c.23.08.51 0 .65-.23l2.23-3.86c.14-.23.07-.52-.13-.68z"/>
         </svg>
       </button>
     </div>

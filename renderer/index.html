@@ -17,9 +17,9 @@
     --text:    #FFFFFF;
     --sub:     #9CA3AF;
     --sub2:    #4B5261;
-    --nav-icon: #6B7280;
-    --nav-active: #E5E7EB;
-    --nav-active-bg: rgba(255,255,255,0.08);
+    --nav-icon: #8B90A8;
+    --nav-active: #FFFFFF;
+    --nav-active-bg: rgba(255,255,255,0.11);
     --red:     #EF4444;
     --green:   #22C55E;
   }
@@ -62,7 +62,7 @@
     display: flex; flex-direction: column; align-items: center;
     padding: 20px 0 20px;
     position: relative; z-index: 10;
-    /* no background – blends with app bg */
+    overflow: visible;
   }
 
   .sidebar-logo { margin-bottom: 32px; }
@@ -73,14 +73,25 @@
     width: 46px; height: 46px; border-radius: 12px; border: none;
     background: transparent; color: var(--nav-icon); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s, color 0.15s; position: relative;
+    transition: background 0.18s, color 0.18s; position: relative;
   }
-  .nav-btn svg { width: 22px; height: 22px; }
-  .nav-btn:hover { background: var(--nav-active-bg); color: #C4C8D8; }
+  .nav-btn svg { width: 23px; height: 23px; stroke-width: 2; }
+  .nav-btn:hover { background: rgba(255,255,255,0.07); color: #D0D4E8; }
   .nav-btn.active {
-    background: var(--nav-active-bg);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.11);
     color: var(--nav-active);
+  }
+  /* left accent bar on active */
+  .nav-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 22px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
   }
 
   .sidebar-bottom { margin-top: auto; }
@@ -88,10 +99,24 @@
     width: 46px; height: 46px; border-radius: 12px; border: none;
     background: transparent; color: var(--nav-icon); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.18s, color 0.18s; position: relative;
   }
-  .settings-nav:hover { background: var(--nav-active-bg); color: #C4C8D8; }
-  .settings-nav.active { background: var(--nav-active-bg); border: 1px solid rgba(255,255,255,0.07); color: var(--nav-active); }
+  .settings-nav:hover { background: rgba(255,255,255,0.07); color: #D0D4E8; }
+  .settings-nav.active {
+    background: rgba(255,255,255,0.11);
+    color: var(--nav-active);
+  }
+  .settings-nav.active::before {
+    content: '';
+    position: absolute;
+    left: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 22px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
 
   /* ── Content ── */
   .content { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 12px 12px 12px 0; gap: 12px; }
@@ -314,7 +339,7 @@
 
       <!-- Home — house icon -->
       <button class="nav-btn active" data-tab="home" onclick="switchTab('home',this)" title="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
           <path d="M9 21V12h6v9"/>
         </svg>
@@ -322,7 +347,7 @@
 
       <!-- Locker — grid of 4 squares (locker/cosmetics) -->
       <button class="nav-btn" data-tab="locker" onclick="switchTab('locker',this)" title="Locker">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="8" height="8" rx="1.5"/>
           <rect x="13" y="3" width="8" height="8" rx="1.5"/>
           <rect x="13" y="13" width="8" height="8" rx="1.5"/>
@@ -332,7 +357,7 @@
 
       <!-- Shop — shopping bag -->
       <button class="nav-btn" data-tab="shop" onclick="switchTab('shop',this)" title="Item Shop">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 0 1-8 0"/>
@@ -341,7 +366,7 @@
 
       <!-- Leaderboard — bar chart with arrow (stats) -->
       <button class="nav-btn" data-tab="leaderboard" onclick="switchTab('leaderboard',this)" title="Leaderboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="12" width="4" height="9" rx="1"/>
           <rect x="10" y="6" width="4" height="15" rx="1"/>
           <rect x="17" y="9" width="4" height="12" rx="1"/>
@@ -355,7 +380,7 @@
     <div class="sidebar-bottom">
       <!-- Settings — gear -->
       <button class="settings-nav" onclick="switchTab('settings',this)" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>

@@ -4,320 +4,267 @@
 <meta charset="UTF-8">
 <title>StarGlaze</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap');
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg:      #0D0E17;
-    --surface: #171929;
-    --border:  #2A2D42;
-    --accent:  #D946EF;
-    --purple:  #7C3AED;
-    --purple2: #9333EA;
-    --text:    #FFFFFF;
-    --sub:     #9CA3AF;
-    --sub2:    #4B5261;
-    --nav-icon: #8B90A8;
-    --nav-active: #FFFFFF;
-    --nav-active-bg: rgba(255,255,255,0.11);
-    --red:     #EF4444;
-    --green:   #22C55E;
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
 
-  html, body {
-    width: 100vw; height: 100vh;
-    background: var(--bg);
-    font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
-    overflow: hidden; user-select: none;
-  }
+html, body {
+  width:100vw; height:100vh; overflow:hidden;
+  font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;
+  background:#161830;
+  color:#fff;
+}
 
-  /* ── Floating window controls ── */
-  .wc {
-    position: fixed; top: 16px; right: 16px; z-index: 999;
-    display: flex; align-items: center; gap: 20px;
-    -webkit-app-region: no-drag;
-  }
-  .wc-btn {
-    background: none; border: none; cursor: pointer;
-    color: #A0A0B0; line-height: 1; padding: 4px;
-    transition: color 0.12s; display: flex; align-items: center;
-  }
-  .wc-btn:hover { color: #fff; }
-  .wc-btn.x:hover { color: var(--red); }
+/* ─── Window controls (floating, top-right) ─────────────────────── */
+.wc {
+  position:fixed; top:14px; right:14px; z-index:999;
+  display:flex; align-items:center; gap:18px;
+  -webkit-app-region:no-drag;
+}
+.wc button {
+  background:none; border:none; cursor:pointer; padding:3px;
+  color:#6B7280; display:flex; align-items:center;
+  transition:color .12s;
+}
+.wc button:hover { color:#fff; }
+.wc button.x:hover { color:#EF4444; }
 
-  /* drag overlay (top strip) */
-  .drag {
-    position: fixed; top: 0; left: 70px; right: 0; height: 48px;
-    -webkit-app-region: drag; z-index: 0; pointer-events: none;
-  }
+/* ─── Drag strip ────────────────────────────────────────────────── */
+.drag { position:fixed; top:0; left:0; right:0; height:44px; -webkit-app-region:drag; z-index:0; pointer-events:none; }
 
-  /* ── Layout ── */
-  .app { display: flex; height: 100vh; width: 100vw; }
+/* ─── App layout ────────────────────────────────────────────────── */
+.app { display:flex; height:100vh; }
 
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 70px; flex-shrink: 0;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 20px 0 20px;
-    position: relative; z-index: 10;
-    overflow: visible;
-  }
+/* ─── Sidebar ───────────────────────────────────────────────────── */
+.sidebar {
+  width:62px; flex-shrink:0;
+  background:#0D0F1A;
+  display:flex; flex-direction:column; align-items:center;
+  padding:18px 0 18px; gap:0;
+}
 
-  .sidebar-logo { margin-bottom: 32px; }
+.logo { margin-bottom:28px; }
 
-  .nav { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.nav { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
 
-  .nav-btn {
-    width: 46px; height: 46px; border-radius: 12px; border: none;
-    background: transparent; color: var(--nav-icon); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.18s, color 0.18s; position: relative;
-  }
-  .nav-btn svg { width: 23px; height: 23px; stroke-width: 2; }
-  .nav-btn:hover { background: rgba(255,255,255,0.07); color: #D0D4E8; }
-  .nav-btn.active {
-    background: rgba(255,255,255,0.11);
-    color: var(--nav-active);
-  }
-  /* left accent bar on active */
-  .nav-btn.active::before {
-    content: '';
-    position: absolute;
-    left: 0px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 22px;
-    background: var(--accent);
-    border-radius: 0 3px 3px 0;
-  }
+.nb {
+  width:42px; height:42px; border-radius:10px;
+  border:none; background:transparent;
+  color:#5A5F78; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s, color .15s;
+}
+.nb:hover { background:rgba(255,255,255,.06); color:#A0A6BF; }
+.nb.on    { background:rgba(255,255,255,.10); color:#E5E7EB; }
+.nb svg   { width:20px; height:20px; }
 
-  .sidebar-bottom { margin-top: auto; }
-  .settings-nav {
-    width: 46px; height: 46px; border-radius: 12px; border: none;
-    background: transparent; color: var(--nav-icon); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.18s, color 0.18s; position: relative;
-  }
-  .settings-nav:hover { background: rgba(255,255,255,0.07); color: #D0D4E8; }
-  .settings-nav.active {
-    background: rgba(255,255,255,0.11);
-    color: var(--nav-active);
-  }
-  .settings-nav.active::before {
-    content: '';
-    position: absolute;
-    left: 0px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 22px;
-    background: var(--accent);
-    border-radius: 0 3px 3px 0;
-  }
+.sidebar-foot { margin-top:auto; }
 
-  /* ── Content ── */
-  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 12px 12px 12px 0; gap: 12px; }
+/* ─── Content ───────────────────────────────────────────────────── */
+.content {
+  flex:1; display:flex; flex-direction:column;
+  background:#161830;
+  padding:12px 14px 14px 14px;
+  gap:12px; min-width:0; overflow:hidden;
+}
 
-  /* ── Player header panel ── */
-  .player-panel {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 0 24px;
-    height: 88px; display: flex; align-items: center; gap: 16px;
-    flex-shrink: 0;
-    /* push right of wc buttons */
-  }
+/* ─── Player header card ────────────────────────────────────────── */
+.header-card {
+  background:#1E2038;
+  border:1px solid #2C2F4A;
+  border-radius:12px;
+  padding:14px 20px;
+  display:flex; align-items:center; gap:14px;
+  flex-shrink:0;
+}
+.avatar {
+  width:58px; height:58px; border-radius:8px;
+  background:#2A2D48; overflow:hidden; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.avatar img { width:100%; height:100%; object-fit:cover; }
+.avatar svg { color:#4B4F68; }
+.player-info {}
+.welcome { font-size:12px; font-weight:500; color:#6B7280; margin-bottom:3px; }
+.pname   { font-size:22px; font-weight:700; color:#fff; letter-spacing:-.3px; line-height:1; }
 
-  .avatar {
-    width: 62px; height: 62px; border-radius: 10px;
-    background: var(--border); flex-shrink: 0;
-    overflow: hidden; display: flex; align-items: center; justify-content: center;
-  }
-  .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar svg { color: var(--sub2); }
+/* ─── Scrollable main area ──────────────────────────────────────── */
+.scroll { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; min-height:0; }
+.scroll::-webkit-scrollbar { width:3px; }
+.scroll::-webkit-scrollbar-thumb { background:#2C2F4A; border-radius:2px; }
 
-  .player-text { flex: 1; }
-  .welcome-txt { font-size: 13px; font-weight: 500; color: var(--sub); margin-bottom: 3px; }
-  .player-name { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; line-height: 1; }
+/* ─── Tab visibility ────────────────────────────────────────────── */
+.tab { display:none; flex-direction:column; gap:12px; }
+.tab.on { display:flex; }
 
-  .play-btn {
-    padding: 12px 32px;
-    background: linear-gradient(135deg, var(--purple), var(--purple2));
-    border: none; border-radius: 10px;
-    color: white; font-size: 14px; font-weight: 700;
-    cursor: pointer; transition: opacity 0.15s; font-family: inherit;
-    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-  }
-  .play-btn:hover { opacity: 0.88; }
-  .play-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .play-btn svg { width: 14px; height: 14px; }
+/* ─── Hero banner ───────────────────────────────────────────────── */
+.hero {
+  width:100%; flex-shrink:0;
+  border-radius:12px; overflow:hidden;
+  position:relative;
+  aspect-ratio:16/7;
+  background:#1E2038;
+}
+.hero img { width:100%; height:100%; object-fit:cover; display:block; }
+.hero-grad {
+  position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(13,15,26,.96) 0%, rgba(13,15,26,.55) 38%, transparent 65%);
+}
+.hero-text {
+  position:absolute; bottom:26px; left:26px; right:26px;
+}
+.hero-title {
+  font-size:28px; font-weight:900; color:#fff;
+  text-transform:uppercase; letter-spacing:.4px;
+  margin-bottom:8px; line-height:1;
+}
+.hero-desc {
+  font-size:13px; color:#9CA3AF; line-height:1.55;
+  max-width:480px; font-weight:400;
+}
 
-  /* ── Scroll area ── */
-  .scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-  .scroll::-webkit-scrollbar { width: 4px; }
-  .scroll::-webkit-scrollbar-track { background: transparent; }
-  .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* ─── Promo card ────────────────────────────────────────────────── */
+.promo {
+  width:100%; border-radius:12px; overflow:hidden;
+  position:relative; min-height:108px;
+  display:flex; align-items:center;
+  cursor:pointer; flex-shrink:0;
+  background:linear-gradient(100deg,#3B1F8C 0%,#5B21B6 30%,#7C3AED 65%,#9333EA 100%);
+}
+.promo:hover { opacity:.93; }
 
-  /* hide tabs */
-  .tab { display: none; flex-direction: column; gap: 12px; }
-  .tab.active { display: flex; }
+/* diagonal stripes */
+.stripes {
+  position:absolute; left:0; top:0; bottom:0; width:90px;
+  overflow:hidden; pointer-events:none;
+}
+.s { position:absolute; height:200%; top:-50%; width:22px; transform:rotate(20deg); }
+.s1 { background:rgba(6,182,212,.75);  left:-4px; }
+.s2 { background:rgba(251,146,60,.75); left:14px; }
+.s3 { background:rgba(163,230,53,.65); left:30px; }
+.s4 { background:rgba(255,255,255,.1); left:46px; }
 
-  /* ── Hero banner ── */
-  .hero {
-    width: 100%; border-radius: 14px; overflow: hidden;
-    position: relative; flex-shrink: 0;
-    aspect-ratio: 16 / 7;
-    background: var(--surface);
-  }
-  .hero-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .hero-gradient {
-    position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(13,14,23,0.95) 0%, rgba(13,14,23,0.5) 35%, transparent 65%);
-  }
-  .hero-text {
-    position: absolute; bottom: 28px; left: 28px; right: 28px;
-  }
-  .hero-title {
-    font-size: 30px; font-weight: 900; color: white; text-transform: uppercase;
-    letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1;
-  }
-  .hero-desc { font-size: 13px; color: var(--sub); line-height: 1.55; max-width: 500px; font-weight: 400; }
+/* dot grid */
+.dots {
+  position:absolute; inset:0;
+  background-image:radial-gradient(rgba(200,180,255,.1) 1px,transparent 1px);
+  background-size:18px 18px; pointer-events:none;
+}
 
-  .hero-dots { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); }
-  .dot.on { background: rgba(255,255,255,0.8); }
+/* bottom glow */
+.promo-glow {
+  position:absolute; bottom:-1px; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,transparent,#A855F7,#06B6D4,transparent);
+  pointer-events:none;
+}
 
-  /* ── Promo / donate card ── */
-  .promo {
-    width: 100%; border-radius: 14px; overflow: hidden;
-    position: relative; flex-shrink: 0; min-height: 110px;
-    background: linear-gradient(135deg, #4C1D95 0%, #6D28D9 40%, #7C3AED 70%, #9333EA 100%);
-    display: flex; align-items: center; padding: 24px;
-    cursor: pointer;
-  }
-  .promo:hover { opacity: 0.95; }
-  /* diagonal stripes on left */
-  .promo-stripes {
-    position: absolute; left: 0; top: 0; bottom: 0; width: 100px; overflow: hidden;
-  }
-  .stripe {
-    position: absolute; width: 30px; height: 200%; top: -50%;
-    transform: rotate(25deg);
-  }
-  .stripe1 { background: rgba(6,182,212,0.7);  left: -5px; }
-  .stripe2 { background: rgba(251,146,60,0.7); left: 18px; }
-  .stripe3 { background: rgba(163,230,53,0.6); left: 38px; }
-  .stripe4 { background: rgba(255,255,255,0.12); left: 58px; }
-  /* dot grid texture */
-  .promo-grid {
-    position: absolute; inset: 0;
-    background-image: radial-gradient(rgba(200,180,255,0.12) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-  .promo-content { position: relative; z-index: 1; flex: 1; padding-left: 80px; }
-  .promo-title { font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
-  .promo-sub { font-size: 13px; color: rgba(224,214,255,0.9); font-weight: 400; }
-  .promo-ext {
-    position: absolute; top: 16px; right: 16px; z-index: 1;
-    width: 34px; height: 34px; border-radius: 8px;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
-    display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7);
-  }
-  .promo-ext svg { width: 14px; height: 14px; }
+.promo-body {
+  position:relative; z-index:1;
+  padding:24px 24px 24px 90px; flex:1;
+}
+.promo-title { font-size:20px; font-weight:700; color:#fff; margin-bottom:4px; }
+.promo-sub   { font-size:13px; color:rgba(220,210,255,.9); font-weight:400; }
 
-  /* ── Locker ── */
-  .sec-title { font-size: 15px; font-weight: 700; color: var(--text); }
-  .skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 10px; }
-  .skin-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; aspect-ratio: 3/4; overflow: hidden;
-    position: relative; cursor: pointer; transition: border-color 0.15s;
-  }
-  .skin-card:hover { border-color: rgba(217,70,239,0.4); }
-  .skin-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .skin-label {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-    padding: 10px 8px 7px; font-size: 10px; font-weight: 600;
-    color: white; text-align: center;
-  }
+.promo-ext {
+  position:absolute; top:14px; right:14px; z-index:2;
+  width:32px; height:32px; border-radius:7px;
+  background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.14);
+  display:flex; align-items:center; justify-content:center;
+  color:rgba(255,255,255,.65);
+}
+.promo-ext svg { width:14px; height:14px; }
 
-  /* ── Leaderboard ── */
-  .lb { width: 100%; border-collapse: collapse; }
-  .lb th {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--sub2); padding: 0 16px 12px; text-align: left;
-  }
-  .lb td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; }
-  .lb tr:last-child td { border-bottom: none; }
-  .lb tbody tr { transition: background 0.1s; }
-  .lb tbody tr:hover td { background: rgba(255,255,255,0.03); }
-  .rank-num { font-weight: 800; color: var(--sub2); }
-  .rank-1 .rank-num { color: #F59E0B; }
-  .rank-2 .rank-num { color: #9CA3AF; }
-  .rank-3 .rank-num { color: #CD7C2F; }
-  .stat { color: var(--sub); }
+/* ─── Inner page sections ───────────────────────────────────────── */
+.sec-title { font-size:15px; font-weight:700; color:#fff; }
 
-  /* ── Settings ── */
-  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .s-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 16px; }
-  .s-row:last-child { border-bottom: none; }
-  .s-label { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
-  .s-sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
-  .s-input {
-    flex: 1.2; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--text);
-    outline: none; transition: border-color 0.15s; font-family: inherit;
-  }
-  .s-input:focus { border-color: var(--purple); }
-  .s-input::placeholder { color: var(--sub2); }
-  .s-btns { display: flex; gap: 10px; padding-top: 4px; }
-  .btn-primary {
-    padding: 10px 24px; background: linear-gradient(135deg, var(--purple), var(--purple2));
-    border: none; border-radius: 9px; color: white; font-size: 13px; font-weight: 700;
-    cursor: pointer; font-family: inherit; transition: opacity 0.15s;
-  }
-  .btn-primary:hover { opacity: 0.88; }
-  .btn-ghost {
-    padding: 10px 24px; background: transparent; border: 1px solid var(--border);
-    border-radius: 9px; color: var(--red); font-size: 13px; font-weight: 700;
-    cursor: pointer; font-family: inherit; transition: border-color 0.15s, background 0.15s;
-  }
-  .btn-ghost:hover { border-color: var(--red); background: rgba(239,68,68,0.07); }
+.grid-skins {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:10px;
+}
+.skin {
+  background:#1E2038; border:1px solid #2C2F4A;
+  border-radius:10px; aspect-ratio:3/4; overflow:hidden;
+  position:relative; cursor:pointer; transition:border-color .15s;
+}
+.skin:hover { border-color:#7C3AED; }
+.skin img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.skin-lbl {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(to top,rgba(0,0,0,.8),transparent);
+  font-size:10px; font-weight:600; color:#fff;
+  text-align:center; padding:10px 6px 6px;
+}
 
-  /* ── Empty / misc ── */
-  .empty { color: var(--sub); font-size: 13px; text-align: center; padding: 36px 0; font-weight: 500; }
-  .sec-head { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.lb-wrap { background:#1E2038; border:1px solid #2C2F4A; border-radius:12px; overflow:hidden; }
+.lb { width:100%; border-collapse:collapse; }
+.lb th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#4B4F68; padding:0 16px 10px; text-align:left; }
+.lb td { padding:11px 16px; border-top:1px solid #2C2F4A; font-size:13px; font-weight:500; }
+.lb tbody tr:hover td { background:rgba(255,255,255,.02); }
+.r1 .rn { color:#F59E0B; font-weight:800; }
+.r2 .rn { color:#9CA3AF; font-weight:800; }
+.r3 .rn { color:#CD7C2F; font-weight:800; }
+.rn { color:#4B4F68; font-weight:800; }
+.rstat { color:#6B7280; }
 
-  /* ── Toast ── */
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 22px;
-    font-size: 13px; font-weight: 600; color: var(--text);
-    opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; z-index: 999;
-  }
-  .toast.show { opacity: 1; }
-  .toast.ok  { border-color: rgba(34,197,94,0.4); color: var(--green); }
-  .toast.err { border-color: rgba(239,68,68,0.4); color: var(--red); }
+.scard { background:#1E2038; border:1px solid #2C2F4A; border-radius:12px; overflow:hidden; margin-bottom:12px; }
+.srow { display:flex; align-items:center; padding:13px 18px; border-bottom:1px solid #2C2F4A; gap:14px; }
+.srow:last-child { border-bottom:none; }
+.slbl { flex:1; }
+.slbl-main { font-size:13px; font-weight:600; color:#fff; }
+.slbl-sub  { font-size:11px; color:#6B7280; margin-top:2px; }
+.sinp {
+  flex:1.2; background:#0D0F1A; border:1px solid #2C2F4A;
+  border-radius:8px; padding:9px 13px; font-size:13px; color:#fff;
+  outline:none; transition:border-color .15s; font-family:inherit;
+}
+.sinp:focus { border-color:#7C3AED; }
+.sinp::placeholder { color:#4B4F68; }
+.btns { display:flex; gap:10px; }
+.btn-p {
+  padding:10px 22px;
+  background:linear-gradient(135deg,#7C3AED,#9333EA);
+  border:none; border-radius:9px; color:#fff;
+  font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:opacity .15s;
+}
+.btn-p:hover { opacity:.88; }
+.btn-d {
+  padding:10px 22px; background:transparent;
+  border:1px solid #2C2F4A; border-radius:9px; color:#EF4444;
+  font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:border-color .15s, background .15s;
+}
+.btn-d:hover { border-color:#EF4444; background:rgba(239,68,68,.07); }
+
+.empty { color:#6B7280; font-size:13px; text-align:center; padding:32px 0; font-weight:500; }
+
+/* ─── Toast ─────────────────────────────────────────────────────── */
+.toast {
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  background:#1E2038; border:1px solid #2C2F4A; border-radius:10px;
+  padding:10px 22px; font-size:13px; font-weight:600; color:#fff;
+  opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; z-index:999;
+}
+.toast.on { opacity:1; }
+.toast.ok  { border-color:rgba(34,197,94,.4); color:#22C55E; }
+.toast.err { border-color:rgba(239,68,68,.4); color:#EF4444; }
 </style>
 </head>
 <body>
 
-<!-- drag strip -->
 <div class="drag"></div>
 
-<!-- floating window controls -->
+<!-- Window controls -->
 <div class="wc">
-  <button class="wc-btn" onclick="sg.windowMinimize()">
+  <button onclick="sg.windowMinimize()">
     <svg width="12" height="2" viewBox="0 0 12 2"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
   </button>
-  <button class="wc-btn" onclick="sg.windowMaximize()">
-    <svg width="11" height="11" viewBox="0 0 11 11"><rect x="0.75" y="0.75" width="9.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+  <button onclick="sg.windowMaximize()">
+    <svg width="11" height="11" viewBox="0 0 11 11"><rect x=".75" y=".75" width="9.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
   </button>
-  <button class="wc-btn x" onclick="sg.windowClose()">
+  <button class="x" onclick="sg.windowClose()">
     <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
 </div>
@@ -326,63 +273,69 @@
 
   <!-- ── Sidebar ── -->
   <div class="sidebar">
-    <!-- Logo -->
-    <div class="sidebar-logo">
-      <svg width="34" height="34" viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="24" r="22" fill="rgba(217,70,239,0.12)"/>
-        <path d="M24 6 L27 18 L38 12 L30 22 L42 24 L30 26 L38 36 L27 30 L24 42 L21 30 L10 36 L18 26 L6 24 L18 22 L10 12 L21 18 Z" fill="#D946EF" opacity="0.9"/>
-        <circle cx="24" cy="24" r="5" fill="#D946EF"/>
+
+    <!-- Logo — stylized bird/star in magenta -->
+    <div class="logo">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <!-- wing left -->
+        <path d="M15 4 C11 8, 4 9, 3 15 C5 12, 10 12, 13 15 C10 11, 11 6, 15 4Z" fill="#D946EF"/>
+        <!-- wing right -->
+        <path d="M15 4 C19 8, 26 9, 27 15 C25 12, 20 12, 17 15 C20 11, 19 6, 15 4Z" fill="#D946EF"/>
+        <!-- body/tail -->
+        <path d="M13 15 C12 19, 9 24, 15 27 C21 24, 18 19, 17 15 C16 17, 15 18, 15 18 C15 18, 14 17, 13 15Z" fill="#D946EF"/>
+        <!-- head -->
+        <circle cx="15" cy="13" r="2.5" fill="#D946EF"/>
       </svg>
     </div>
 
     <nav class="nav">
 
-      <!-- Home — house icon -->
-      <button class="nav-btn active" data-tab="home" onclick="switchTab('home',this)" title="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-          <path d="M9 21V12h6v9"/>
+      <!-- Home -->
+      <button class="nb on" data-tab="home" onclick="go('home',this)" title="Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 10L12 3l9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>
+          <polyline points="9 21 9 12 15 12 15 21"/>
         </svg>
       </button>
 
-      <!-- Locker — grid of 4 squares (locker/cosmetics) -->
-      <button class="nav-btn" data-tab="locker" onclick="switchTab('locker',this)" title="Locker">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="8" height="8" rx="1.5"/>
-          <rect x="13" y="3" width="8" height="8" rx="1.5"/>
-          <rect x="13" y="13" width="8" height="8" rx="1.5"/>
-          <rect x="3" y="13" width="8" height="8" rx="1.5"/>
+      <!-- Stats / bar chart -->
+      <button class="nb" data-tab="leaderboard" onclick="go('leaderboard',this)" title="Leaderboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="20" x2="4" y2="13"/>
+          <line x1="9" y1="20" x2="9" y2="4"/>
+          <line x1="14" y1="20" x2="14" y2="9"/>
+          <line x1="19" y1="20" x2="19" y2="14"/>
+          <line x1="2" y1="20" x2="21" y2="20"/>
         </svg>
       </button>
 
-      <!-- Shop — shopping bag -->
-      <button class="nav-btn" data-tab="shop" onclick="switchTab('shop',this)" title="Item Shop">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+      <!-- Locker / collection card -->
+      <button class="nb" data-tab="locker" onclick="go('locker',this)" title="Locker">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/>
+          <line x1="9" y1="7" x2="15" y2="7"/>
+          <line x1="9" y1="11" x2="15" y2="11"/>
+          <line x1="9" y1="15" x2="12" y2="15"/>
+        </svg>
+      </button>
+
+      <!-- Shop / bag -->
+      <button class="nb" data-tab="shop" onclick="go('shop',this)" title="Item Shop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
-          <path d="M16 10a4 4 0 0 1-8 0"/>
-        </svg>
-      </button>
-
-      <!-- Leaderboard — bar chart with arrow (stats) -->
-      <button class="nav-btn" data-tab="leaderboard" onclick="switchTab('leaderboard',this)" title="Leaderboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="12" width="4" height="9" rx="1"/>
-          <rect x="10" y="6" width="4" height="15" rx="1"/>
-          <rect x="17" y="9" width="4" height="12" rx="1"/>
-          <polyline points="4 8 8 4 12 7 17 2"/>
-          <polyline points="15 2 17 2 17 4"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
         </svg>
       </button>
 
     </nav>
 
-    <div class="sidebar-bottom">
-      <!-- Settings — gear -->
-      <button class="settings-nav" onclick="switchTab('settings',this)" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+    <div class="sidebar-foot">
+      <!-- Settings gear -->
+      <button class="nb" onclick="go('settings',this)" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
           <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
         </svg>
       </button>
     </div>
@@ -392,59 +345,49 @@
   <div class="content">
 
     <!-- Player header -->
-    <div class="player-panel">
+    <div class="header-card">
       <div class="avatar" id="avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30" style="color:var(--sub2)">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
         </svg>
       </div>
-      <div class="player-text">
-        <div class="welcome-txt">Welcome,</div>
-        <div class="player-name" id="player-name">Player</div>
+      <div class="player-info">
+        <div class="welcome">Welcome,</div>
+        <div class="pname" id="pname">Player</div>
       </div>
-      <button class="play-btn" id="play-btn" onclick="launchGame()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Play
-      </button>
     </div>
 
-    <!-- Scrollable page area -->
+    <!-- Scroll area -->
     <div class="scroll">
 
-      <!-- ── HOME ── -->
-      <div class="tab active" id="tab-home">
-        <!-- Hero banner -->
+      <!-- HOME -->
+      <div class="tab on" id="tab-home">
         <div class="hero">
-          <img class="hero-img" src="../assets/banner.png" alt="" onerror="this.style.display='none'">
-          <div class="hero-gradient"></div>
+          <img src="../assets/banner.png" onerror="this.style.display='none'">
+          <div class="hero-grad"></div>
           <div class="hero-text">
             <div class="hero-title">Chapter 1, Season 8</div>
-            <div class="hero-desc">Pirates, a volcano, and Tilted Towers still standing. The most iconic Fortnite season — now live on StarGlaze. Drop in, build up, and relive Chapter 1 the way it was meant to be played.</div>
-          </div>
-          <div class="hero-dots">
-            <div class="dot on"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
+            <div class="hero-desc">Pirates, a volcano, and the best season in Battle Royale history. The original Fortnite experience — now live on StarGlaze. Drop in and relive Chapter 1 the way it was meant to be played.</div>
           </div>
         </div>
 
-        <!-- Donate promo card -->
         <div class="promo" onclick="sg.openExternal('http://26.252.123.243:8080/donate')">
-          <div class="promo-stripes">
-            <div class="stripe stripe1"></div>
-            <div class="stripe stripe2"></div>
-            <div class="stripe stripe3"></div>
-            <div class="stripe stripe4"></div>
+          <div class="stripes">
+            <div class="s s1"></div>
+            <div class="s s2"></div>
+            <div class="s s3"></div>
+            <div class="s s4"></div>
           </div>
-          <div class="promo-grid"></div>
-          <div class="promo-content">
+          <div class="dots"></div>
+          <div class="promo-glow"></div>
+          <div class="promo-body">
             <div class="promo-title">Donate to StarGlaze</div>
             <div class="promo-sub">Help us fund our servers and keep StarGlaze online!</div>
           </div>
           <div class="promo-ext">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
               <polyline points="15 3 21 3 21 9"/>
               <line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
@@ -452,131 +395,102 @@
         </div>
       </div>
 
-      <!-- ── LOCKER ── -->
-      <div class="tab" id="tab-locker">
-        <div class="sec-head">Your Locker</div>
-        <div class="skins-grid" id="locker-grid">
-          <div class="empty" style="grid-column:1/-1">Loading your locker...</div>
-        </div>
-      </div>
-
-      <!-- ── SHOP ── -->
-      <div class="tab" id="tab-shop">
-        <div class="sec-head">Item Shop</div>
-        <div class="empty" id="shop-content">Loading shop...</div>
-      </div>
-
-      <!-- ── LEADERBOARD ── -->
+      <!-- LEADERBOARD -->
       <div class="tab" id="tab-leaderboard">
-        <div class="sec-head">Leaderboard</div>
-        <div class="settings-card">
-          <table class="lb" id="lb-table">
+        <div class="sec-title">Leaderboard</div>
+        <div class="lb-wrap">
+          <table class="lb">
             <thead><tr>
-              <th style="width:48px">#</th>
-              <th>Player</th>
-              <th>Wins</th>
-              <th>Kills</th>
-              <th>K/D</th>
+              <th style="width:44px">#</th>
+              <th>Player</th><th>Wins</th><th>Kills</th><th>K/D</th>
             </tr></thead>
             <tbody id="lb-body">
-              <tr><td colspan="5" class="empty">Loading...</td></tr>
+              <tr><td colspan="5" class="empty">Leaderboard coming soon</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- ── SETTINGS ── -->
-      <div class="tab" id="tab-settings">
-        <div class="sec-head">Settings</div>
-        <div class="settings-card" style="margin-bottom:12px">
-          <div class="s-row">
-            <div>
-              <div class="s-label">Game Path</div>
-              <div class="s-sub">Folder containing FortniteGame/</div>
-            </div>
-            <input class="s-input" id="game-path" placeholder="C:\Fortnite\S8.51" spellcheck="false">
-          </div>
-        </div>
-        <div class="s-btns">
-          <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
-          <button class="btn-ghost"   onclick="doLogout()">Sign Out</button>
+      <!-- LOCKER -->
+      <div class="tab" id="tab-locker">
+        <div class="sec-title">Your Locker</div>
+        <div class="grid-skins" id="locker-grid">
+          <div class="empty" style="grid-column:1/-1">Loading locker...</div>
         </div>
       </div>
 
-    </div><!-- /scroll -->
-  </div><!-- /content -->
-</div><!-- /app -->
+      <!-- SHOP -->
+      <div class="tab" id="tab-shop">
+        <div class="sec-title">Item Shop</div>
+        <div class="empty">Shop coming soon</div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="tab" id="tab-settings">
+        <div class="sec-title" style="margin-bottom:10px">Settings</div>
+        <div class="scard">
+          <div class="srow">
+            <div class="slbl">
+              <div class="slbl-main">Game Path</div>
+              <div class="slbl-sub">Folder containing FortniteGame/</div>
+            </div>
+            <input class="sinp" id="game-path" placeholder="C:\Fortnite\S8.51" spellcheck="false">
+          </div>
+        </div>
+        <div class="btns">
+          <button class="btn-p" onclick="saveCfg()">Save</button>
+          <button class="btn-d" onclick="doLogout()">Sign Out</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const TABS = ["home","locker","shop","leaderboard","settings"];
+const TABS = ["home","leaderboard","locker","shop","settings"];
 
-function switchTab(name, btn) {
-  TABS.forEach(t => document.getElementById("tab-" + t).classList.remove("active"));
-  document.querySelectorAll(".nav-btn,.settings-nav").forEach(b => b.classList.remove("active"));
-  document.getElementById("tab-" + name).classList.add("active");
-  if (btn) btn.classList.add("active");
-  if (name === "locker")      loadLocker();
-  if (name === "shop")        loadShop();
-  if (name === "leaderboard") loadLeaderboard();
+function go(name, btn) {
+  TABS.forEach(t => document.getElementById("tab-"+t).classList.remove("on"));
+  document.querySelectorAll(".nb").forEach(b => b.classList.remove("on"));
+  document.getElementById("tab-"+name).classList.add("on");
+  if (btn) btn.classList.add("on");
+  if (name==="locker") loadLocker();
 }
 
-function showToast(msg, type = "") {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = "toast show" + (type ? " " + type : "");
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.className = "toast", 3000);
-}
-
-async function launchGame() {
-  const btn = document.getElementById("play-btn");
-  btn.disabled = true;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launching...`;
-  const res = await sg.launchGame();
-  btn.disabled = false;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play`;
-  showToast(res.ok ? "Game launched!" : (res.error || "Launch failed"), res.ok ? "ok" : "err");
+function toast(msg, type="") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "toast on" + (type ? " "+type : "");
+  clearTimeout(el._t);
+  el._t = setTimeout(()=> el.className="toast", 2800);
 }
 
 async function loadLocker() {
-  const grid = document.getElementById("locker-grid");
-  grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Loading...</div>';
+  const g = document.getElementById("locker-grid");
+  g.innerHTML = '<div class="empty" style="grid-column:1/-1">Loading...</div>';
   try {
-    const profile = await sg.fetchProfile();
-    if (!profile) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Could not load locker</div>'; return; }
-    const items = profile.profileChanges?.[0]?.profile?.items || {};
-    const skins = Object.values(items).filter(i => i.templateId?.startsWith("AthenaCharacter:"));
-    if (!skins.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No skins in locker</div>'; return; }
-    grid.innerHTML = skins.map(s => {
+    const p = await sg.fetchProfile();
+    if (!p) { g.innerHTML='<div class="empty" style="grid-column:1/-1">Could not load locker</div>'; return; }
+    const items = p.profileChanges?.[0]?.profile?.items || {};
+    const skins = Object.values(items).filter(i=>i.templateId?.startsWith("AthenaCharacter:"));
+    if (!skins.length) { g.innerHTML='<div class="empty" style="grid-column:1/-1">No skins in locker</div>'; return; }
+    g.innerHTML = skins.map(s=>{
       const id = s.templateId.split(":")[1].toLowerCase();
       const name = id.replace(/^cid_\d+_athena_commando_[mf]_/i,"").replace(/_/g," ");
       const img = `https://fortnite-api.com/images/cosmetics/br/${id}/icon.png`;
-      return `<div class="skin-card">
-        <img src="${img}" onerror="this.parentElement.style.background='var(--surface2)';this.remove()"/>
-        <div class="skin-label">${name || id}</div>
-      </div>`;
+      return `<div class="skin"><img src="${img}" onerror="this.remove()"/><div class="skin-lbl">${name||id}</div></div>`;
     }).join("");
-  } catch {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Failed to load locker</div>';
-  }
+  } catch { g.innerHTML='<div class="empty" style="grid-column:1/-1">Failed to load locker</div>'; }
 }
 
-async function loadShop() {
-  document.getElementById("shop-content").textContent = "Shop coming soon";
-}
-
-async function loadLeaderboard() {
-  document.getElementById("lb-body").innerHTML =
-    '<tr><td colspan="5" class="empty">Leaderboard coming soon</td></tr>';
-}
-
-async function saveSettings() {
+async function saveCfg() {
   const cfg = await sg.getConfig();
   cfg.gamePath = document.getElementById("game-path").value.trim();
   await sg.saveConfig(cfg);
-  showToast("Settings saved", "ok");
+  toast("Settings saved","ok");
 }
 
 async function doLogout() {
@@ -585,11 +499,10 @@ async function doLogout() {
 }
 
 async function init() {
-  const [session, cfg] = await Promise.all([sg.getSession(), sg.getConfig()]);
-  if (session?.displayName) document.getElementById("player-name").textContent = session.displayName;
+  const [sess, cfg] = await Promise.all([sg.getSession(), sg.getConfig()]);
+  if (sess?.displayName) document.getElementById("pname").textContent = sess.displayName;
   if (cfg?.gamePath) document.getElementById("game-path").value = cfg.gamePath;
 }
-
 init();
 </script>
 </body>
